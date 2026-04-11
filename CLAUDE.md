@@ -93,6 +93,7 @@ If anything in this file contradicts those docs, those docs win.
 | 2026-04-11 | Phase 3.1: deployer identity + friendbot fund | ✅ | `stellar keys generate deployer --network testnet --fund` saved key to `~/.config/stellar/identity/deployer.toml`. Address: `GA5VIZYCUM3IUZZNQTTB7YSLJSE5WZ2EI5EGWNLTWQ234SLSH45MPKX3`. |
 | 2026-04-11 | Phase 3.2: testnet deploy + init | ✅ | `./scripts/deploy-testnet.sh` uploaded 2 WASMs, deployed 2 contracts, invoked `init`. Addresses: `agent_identity = CAMPXYFZJTIPEVOPOAZPRG5OHXKNBDPGTPRCOIO4LVPGEM4TONPY65A5`, `agentic_commerce = CD2KWU7IE74Z2QKVP3FQ67J46XHNMGIDTNKXVWE7ZNVRC7T6UH46GQXE`. Written to `deployments/testnet.json` (gitignored). |
 | 2026-04-11 | Phase 3 sanity: live invoke | ✅ | `fee_bps()` on commerce returns `100` (1%) proving init ran. `version()` returns `1` on both contracts. Read-only invokes only simulate; 25.x CLI prints `Simulation identified as read-only. Send by rerunning with --send=yes` before the result — the result is still printed. |
+| 2026-04-11 | Phase 4.1: sdk/src/types.ts | ✅ | `Address`, `Agent`, `Job`, `JobStatus`, `MarcConfig` mirroring on-chain structs. `bigint` for `u64`/`i128`. Added `TESTNET` preset with deployed addresses (CAMPXYFZ... / CD2KWU7I...) pulled from `deployments/testnet.json`. `npx tsc` clean; emits `dist/types.{js,d.ts}`. |
 
 ## Gotchas learned (append after each surprise)
 

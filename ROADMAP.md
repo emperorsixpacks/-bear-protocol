@@ -11,8 +11,8 @@ Single-page status tracker. **If you're a Claude agent picking up this project, 
 ## Current state
 
 **Phase:** 4 (TypeScript SDK)
-**Last completed:** Phase 3 — both contracts live on Stellar testnet, `fee_bps()` returns 100 ✅
-**Next action:** Phase 4 Task 4.1 — write `sdk/src/types.ts` (Address, Agent, Job, JobStatus, deployment addresses)
+**Last completed:** Phase 4 Task 4.1 — `sdk/src/types.ts` with `TESTNET` deployment preset, `npx tsc` clean ✅
+**Next action:** Phase 4 Task 4.2 — write `sdk/src/IdentityClient.ts`. **Watch for the stellar-sdk 12.x vs 13.x API drift: we are on 12.x, must use `SorobanRpc.Server` not `rpc.Server`.**
 
 **Deployed contracts (testnet):**
 - `agent_identity`   = `CAMPXYFZJTIPEVOPOAZPRG5OHXKNBDPGTPRCOIO4LVPGEM4TONPY65A5`
@@ -29,7 +29,7 @@ Single-page status tracker. **If you're a Claude agent picking up this project, 
 | 1 | `agent_identity` contract | ✅ done | 5/5 | 7 tests green, 4.2 KB WASM, 6 entry points |
 | 2 | `agentic_commerce` contract | ✅ done | 7/7 | 12 tests green, 9.4 KB WASM, 10 entry points, 99/1 fee split verified |
 | 3 | Testnet deployment | ✅ done | 3/3 | Both contracts live, init invoked, fee_bps=100 verified |
-| **4** | **TypeScript SDK** | 🚧 **in progress** | **0/6** | types, IdentityClient, CommerceClient, marcPaywall, marcFetch, index |
+| **4** | **TypeScript SDK** | 🚧 **in progress** | **1/6** | ✅ types · IdentityClient, CommerceClient, marcPaywall, marcFetch, index |
 | 5 | CLI demo | ⬜ todo | 0/4 | seller-agent, buyer-agent, lifecycle orchestrator, dry run |
 | 6 | Landing page | ⬜ todo | 0/4 | HTML + CSS + JS + Vercel deploy |
 | 7 | Submission materials | ⬜ todo | 0/6 | README, LIGHTPAPER, PROTOCOL, pitch video, DoraHacks form, git tag |
