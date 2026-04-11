@@ -62,6 +62,16 @@ pub struct JobSubmitted {
     pub job_id: u64,
 }
 
+/// Emitted when a job completes and funds are released.
+#[contractevent]
+pub struct JobCompleted {
+    #[topic]
+    pub evaluator: Address,
+    pub job_id: u64,
+    pub payout: i128,
+    pub fee: i128,
+}
+
 #[contract]
 pub struct AgenticCommerceContract;
 
@@ -151,6 +161,43 @@ impl AgenticCommerceContract {
         JobSubmitted {
             provider: caller,
             job_id: id,
+        }
+        .publish(&env);
+    }
+
+    /// Evaluator approves the deliverable. Splits budget 99/1 between provider and treasury.
+    pub fn complete(env: Env, caller: Address, id: u64) {
+        caller.require_auth();
+        let mut job: Job = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Job(id))
+            .unwrap_or_else(|| panic!("job not found"));
+        if caller != job.evaluator {
+            panic!("not evaluator");
+        }
+        if job.status != JobStatus::Submitted {
+            panic!("invalid status");
+        }
+        let fee_bps: u32 = env.storage().instance().get(&DataKey::FeeBps).unwrap();
+        let fee: i128 = (job.budget * (fee_bps as i128)) / BPS_DENOM;
+        let payout: i128 = job.budget - fee;
+
+        let token_client = token::TokenClient::new(&env, &job.token);
+        token_client.transfer(&env.current_contract_address(), &job.provider, &payout);
+        if fee > 0 {
+            let treasury: Address = env.storage().instance().get(&DataKey::Treasury).unwrap();
+            token_client.transfer(&env.current_contract_address(), &treasury, &fee);
+        }
+
+        job.status = JobStatus::Completed;
+        env.storage().persistent().set(&DataKey::Job(id), &job);
+
+        JobCompleted {
+            evaluator: caller,
+            job_id: id,
+            payout,
+            fee,
         }
         .publish(&env);
     }

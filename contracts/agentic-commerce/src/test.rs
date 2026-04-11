@@ -125,3 +125,55 @@ fn submit_rejects_non_provider() {
     );
     client.submit(&mallory, &id, &String::from_str(&env, "ipfs://hax.json"));
 }
+
+#[test]
+fn complete_splits_payout_99_1_between_provider_and_treasury() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, treasury) = setup(&env);
+    let buyer = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let (token_addr, token, stellar_token) = deploy_token(&env, &admin);
+    stellar_token.mint(&buyer, &1_000_000);
+
+    let id = client.create_job(
+        &buyer,
+        &seller,
+        &buyer,
+        &token_addr,
+        &100_000i128,
+        &String::from_str(&env, "ipfs://job.json"),
+    );
+    client.submit(&seller, &id, &String::from_str(&env, "ipfs://work.json"));
+    client.complete(&buyer, &id);
+
+    assert_eq!(token.balance(&seller), 99_000);
+    assert_eq!(token.balance(&treasury), 1_000);
+    assert_eq!(token.balance(&client.address), 0);
+    let job = client.get_job(&id).unwrap();
+    assert_eq!(job.status, JobStatus::Completed);
+}
+
+#[test]
+#[should_panic(expected = "not evaluator")]
+fn complete_rejects_non_evaluator() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _treasury) = setup(&env);
+    let buyer = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let mallory = Address::generate(&env);
+    let (token_addr, _token, stellar_token) = deploy_token(&env, &admin);
+    stellar_token.mint(&buyer, &1_000_000);
+
+    let id = client.create_job(
+        &buyer,
+        &seller,
+        &buyer,
+        &token_addr,
+        &100_000i128,
+        &String::from_str(&env, "ipfs://job.json"),
+    );
+    client.submit(&seller, &id, &String::from_str(&env, "ipfs://work.json"));
+    client.complete(&mallory, &id);
+}
