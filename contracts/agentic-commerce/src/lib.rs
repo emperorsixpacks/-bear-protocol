@@ -120,7 +120,8 @@ impl AgenticCommerceContract {
 
         // Pull funds into contract escrow.
         let token_client = token::TokenClient::new(&env, &token);
-        token_client.transfer(&client_addr, &env.current_contract_address(), &budget);
+        let contract_addr = env.current_contract_address();
+        token_client.transfer(&client_addr, &contract_addr, &budget);
 
         let job = Job {
             id: next,
@@ -190,10 +191,11 @@ impl AgenticCommerceContract {
         let payout: i128 = job.budget - fee;
 
         let token_client = token::TokenClient::new(&env, &job.token);
-        token_client.transfer(&env.current_contract_address(), &job.provider, &payout);
+        let contract_addr = env.current_contract_address();
+        token_client.transfer(&contract_addr, &job.provider, &payout);
         if fee > 0 {
             let treasury: Address = env.storage().instance().get(&DataKey::Treasury).unwrap();
-            token_client.transfer(&env.current_contract_address(), &treasury, &fee);
+            token_client.transfer(&contract_addr, &treasury, &fee);
         }
 
         job.status = JobStatus::Completed;
@@ -223,7 +225,8 @@ impl AgenticCommerceContract {
             panic!("invalid status");
         }
         let token_client = token::TokenClient::new(&env, &job.token);
-        token_client.transfer(&env.current_contract_address(), &job.client, &job.budget);
+        let contract_addr = env.current_contract_address();
+        token_client.transfer(&contract_addr, &job.client, &job.budget);
         job.status = JobStatus::Cancelled;
         env.storage().persistent().set(&DataKey::Job(id), &job);
 

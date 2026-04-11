@@ -8,6 +8,7 @@ MARC on Stellar — a commerce layer for agent payments (job escrow + agent iden
 
 ## Source of truth documents (read in this order before any work)
 
+0. **`ROADMAP.md`** — ⭐ single-page "where are we, what's next" status tracker. Always read first.
 1. `docs/superpowers/specs/2026-04-11-marc-stellar-design.md` — **LOCKED** scope, contract designs, architecture
 2. `docs/plans/2026-04-11-marc-stellar.md` — bite-sized TDD implementation plan
 3. `docs/design-system.md` — visual tokens + landing page component specs
@@ -80,6 +81,14 @@ If anything in this file contradicts those docs, those docs win.
 | 2026-04-11 | Phase 1.3: update_uri (owner-only) | ✅ | 2 new tests (happy + `#[should_panic(expected = "not agent owner")]`). `UriUpdated` event. 4 total tests green. |
 | 2026-04-11 | Phase 1.4: deregister | ✅ | 3 new tests: cleanup, non-owner reject, re-register-after-deregister (ids are sequential, never reused). `Deregistered` event. 7 total tests green. |
 | 2026-04-11 | Phase 1.5: build release WASM + optimize | ✅ | `cargo build --target wasm32v1-none --release` → 4900 B. `stellar contract build --optimize` → 4242 B with 6 exported functions: `agent_of`, `deregister`, `get_agent`, `register`, `update_uri`, `version`. **Gotcha:** `stellar contract optimize` is deprecated; must use `build --optimize`. Updated `scripts/build.sh`. |
+| 2026-04-11 | Phase 2.1: agentic-commerce scaffold + init | ✅ | `contracts/agentic-commerce/{Cargo.toml,src/lib.rs,src/test.rs}` added to workspace. `init(admin, treasury)` sets admin/treasury/FeeBps=100/NextId=1, panics on double-init. 2 tests green. |
+| 2026-04-11 | Phase 2.2: create_job with token escrow | ✅ | TDD. Used `env.register_stellar_asset_contract_v2(admin)` + `StellarAssetClient::mint` + `TokenClient::transfer` from `soroban_sdk::token`. Plan used deprecated alias `token::Client`; switched to `token::TokenClient`. Plan used deprecated `env.events().publish`; migrated to `#[contractevent] JobCreated`. 3 tests green. |
+| 2026-04-11 | Phase 2.3: submit (provider-only) | ✅ | 2 new tests (happy + `#[should_panic(expected = "not provider")]`). `JobSubmitted` event. 5 total. |
+| 2026-04-11 | Phase 2.4: complete with 99/1 fee split | ✅ | Math: `fee = budget * fee_bps / 10_000`, `payout = budget - fee`. 2 new tests verify 99k/1k/0 balances + non-evaluator reject. `JobCompleted` event carries payout + fee. 7 total. |
+| 2026-04-11 | Phase 2.5: cancel refund path | ✅ | Only allowed while `Funded`. Returns full budget to client. 2 new tests (happy + non-client reject). `JobCancelled` event. 9 total. |
+| 2026-04-11 | Phase 2.6: admin setters + 5% cap | ✅ | `set_treasury`, `set_fee_bps`, `fee_bps` getter. Hard cap `MAX_FEE_BPS=500`. 3 new tests: admin happy-path, 501 bps panic, non-admin reject. 12 total. |
+| 2026-04-11 | Phase 2.7: build release WASM + optimize | ✅ | `stellar contract build --optimize` → `agentic_commerce.wasm` 9387 B (vs 50 KB budget = 19%), 10 exported functions: `cancel`, `complete`, `create_job`, `fee_bps`, `get_job`, `init`, `set_fee_bps`, `set_treasury`, `submit`, `version`. Both contracts built clean. |
+| 2026-04-11 | Phase 2 polish: clippy clean | ✅ | Clippy flagged `needless_borrows_for_generic_args` on `&env.current_contract_address()` in 4 callsites (token transfers). Fixed by hoisting to a local `let contract_addr = env.current_contract_address();` and borrowing that. Workspace clippy `-D warnings` green. 12/12 tests still green after refactor. |
 
 ## Gotchas learned (append after each surprise)
 
@@ -94,6 +103,9 @@ If anything in this file contradicts those docs, those docs win.
 - `stellar contract optimize --wasm <path>` is **deprecated** in stellar-cli 25.x. Use `stellar contract build --optimize` instead — it builds, optimizes, hashes, and lists exported functions in one pass. `scripts/build.sh` uses the new command.
 - An empty `#[contractimpl]` block (no entry points) is allowed to compile but gives you a client type that can't be used. Always keep at least a `version() -> u32` stub in the initial scaffold.
 - Inside `#[contractimpl]` methods, the `env` argument is a normal owned `Env` (not `&Env`), and Rust's `Address` ownership rules mean you need `owner.clone()` at every callsite that reuses the same address after `require_auth()` or storage ops.
+- `soroban_sdk::token::Client` is a **deprecated alias** — use `soroban_sdk::token::TokenClient` (read-only) and `soroban_sdk::token::StellarAssetClient` (admin/mint-capable) directly.
+- `env.register_stellar_asset_contract_v2(admin: Address) -> StellarAssetContract` (25.x testutils) is the supported way to deploy a SAC in tests. Call `.address()` on the return value. The old `register_stellar_asset_contract` (v1) is gone.
+- Clippy `-D warnings` flags `&env.current_contract_address()` as `needless_borrows_for_generic_args` because the generated token client methods take generic `IntoVal` args. Hoist to `let contract_addr = env.current_contract_address();` and borrow that instead of inlining.
 
 ## Open risks / things to verify during implementation
 

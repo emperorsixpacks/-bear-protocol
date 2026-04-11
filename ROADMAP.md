@@ -10,9 +10,9 @@ Single-page status tracker. **If you're a Claude agent picking up this project, 
 
 ## Current state
 
-**Phase:** 2 (Agentic Commerce contract)
-**Last completed:** Phase 1 — `agent_identity` contract fully green (7 tests, 4.2 KB optimized WASM)
-**Next action:** Phase 2 Task 2.1 — scaffold `contracts/agentic-commerce` crate with `init` + smoke test
+**Phase:** 3 (Testnet deployment)
+**Last completed:** Phase 2 — `agentic_commerce` contract fully green (12 tests, 9387 B optimized WASM, 10 entry points, clippy clean)
+**Next action:** Phase 3 Task 3.1 — `stellar keys generate deployer --network testnet --fund`
 
 ---
 
@@ -22,8 +22,8 @@ Single-page status tracker. **If you're a Claude agent picking up this project, 
 |---|---|---|---|---|
 | 0 | Workspace scaffolding | ✅ done | 3/3 | Rust workspace + SDK + demo + landing + scripts |
 | 1 | `agent_identity` contract | ✅ done | 5/5 | 7 tests green, 4.2 KB WASM, 6 entry points |
-| **2** | **`agentic_commerce` contract** | 🚧 **in progress** | **0/7** | **Escrow + 99/1 fee split. The hard one.** |
-| 3 | Testnet deployment | ⬜ todo | 0/2 | `stellar keys generate` + deploy script |
+| 2 | `agentic_commerce` contract | ✅ done | 7/7 | 12 tests green, 9.4 KB WASM, 10 entry points, 99/1 fee split verified |
+| **3** | **Testnet deployment** | 🚧 **in progress** | **0/2** | `stellar keys generate` + deploy script |
 | 4 | TypeScript SDK | ⬜ todo | 0/6 | types, IdentityClient, CommerceClient, marcPaywall, marcFetch, index |
 | 5 | CLI demo | ⬜ todo | 0/4 | seller-agent, buyer-agent, lifecycle orchestrator, dry run |
 | 6 | Landing page | ⬜ todo | 0/4 | HTML + CSS + JS + Vercel deploy |
@@ -35,15 +35,15 @@ Single-page status tracker. **If you're a Claude agent picking up this project, 
 
 | # | Task | State | Green criteria |
 |---|---|---|---|
-| 2.1 | Scaffold `agentic-commerce` crate + `init` + smoke test | ⬜ | 1 test pass: admin/treasury/fee set after init |
-| 2.2 | `create_job` with token escrow pull | ⬜ | Budget moves from buyer → contract; job status = Funded |
-| 2.3 | `submit` (provider-only guard) | ⬜ | 2 tests: happy + non-provider panic |
-| 2.4 | `complete` with 99/1 fee split | ⬜ | Seller gets 99%, treasury gets 1%, contract balance = 0 |
-| 2.5 | `cancel` refund path | ⬜ | Full budget back to buyer, status = Cancelled |
-| 2.6 | `set_treasury` + `set_fee_bps` (admin, 5% cap) | ⬜ | 2 tests: admin update + 501 bps panic |
-| 2.7 | Build release WASM + optimize | ⬜ | Under 50 KB, ABI shows all 8+ entry points |
+| 2.1 | Scaffold `agentic-commerce` crate + `init` + smoke test | ✅ | 2 tests: init sets state, double-init panics |
+| 2.2 | `create_job` with token escrow pull | ✅ | Budget moves buyer → contract; status = Funded |
+| 2.3 | `submit` (provider-only guard) | ✅ | 2 tests: happy + non-provider panic |
+| 2.4 | `complete` with 99/1 fee split | ✅ | Seller 99k, treasury 1k, contract 0 |
+| 2.5 | `cancel` refund path | ✅ | Full budget back to buyer, status = Cancelled |
+| 2.6 | `set_treasury` + `set_fee_bps` (admin, 5% cap) | ✅ | 3 tests: admin update + 501 bps panic + non-admin reject |
+| 2.7 | Build release WASM + optimize | ✅ | 9387 B, 10 entry points, clippy clean |
 
-**Target:** 8+ tests green, one WASM file under 50 KB, zero clippy warnings.
+**Actual:** 12 tests green, WASM 9.4 KB, zero clippy warnings. ✅
 
 ---
 
