@@ -89,6 +89,10 @@ If anything in this file contradicts those docs, those docs win.
 | 2026-04-11 | Phase 2.6: admin setters + 5% cap | ✅ | `set_treasury`, `set_fee_bps`, `fee_bps` getter. Hard cap `MAX_FEE_BPS=500`. 3 new tests: admin happy-path, 501 bps panic, non-admin reject. 12 total. |
 | 2026-04-11 | Phase 2.7: build release WASM + optimize | ✅ | `stellar contract build --optimize` → `agentic_commerce.wasm` 9387 B (vs 50 KB budget = 19%), 10 exported functions: `cancel`, `complete`, `create_job`, `fee_bps`, `get_job`, `init`, `set_fee_bps`, `set_treasury`, `submit`, `version`. Both contracts built clean. |
 | 2026-04-11 | Phase 2 polish: clippy clean | ✅ | Clippy flagged `needless_borrows_for_generic_args` on `&env.current_contract_address()` in 4 callsites (token transfers). Fixed by hoisting to a local `let contract_addr = env.current_contract_address();` and borrowing that. Workspace clippy `-D warnings` green. 12/12 tests still green after refactor. |
+| 2026-04-11 | Phase 3.0: deploy script rewrite | ✅ | Plan's script was written against deprecated `stellar contract optimize` + `.optimized.wasm` naming. Rewrote to use `stellar contract build --optimize` (in-place) + `--source-account` flag. `bash -n` clean. |
+| 2026-04-11 | Phase 3.1: deployer identity + friendbot fund | ✅ | `stellar keys generate deployer --network testnet --fund` saved key to `~/.config/stellar/identity/deployer.toml`. Address: `GA5VIZYCUM3IUZZNQTTB7YSLJSE5WZ2EI5EGWNLTWQ234SLSH45MPKX3`. |
+| 2026-04-11 | Phase 3.2: testnet deploy + init | ✅ | `./scripts/deploy-testnet.sh` uploaded 2 WASMs, deployed 2 contracts, invoked `init`. Addresses: `agent_identity = CAMPXYFZJTIPEVOPOAZPRG5OHXKNBDPGTPRCOIO4LVPGEM4TONPY65A5`, `agentic_commerce = CD2KWU7IE74Z2QKVP3FQ67J46XHNMGIDTNKXVWE7ZNVRC7T6UH46GQXE`. Written to `deployments/testnet.json` (gitignored). |
+| 2026-04-11 | Phase 3 sanity: live invoke | ✅ | `fee_bps()` on commerce returns `100` (1%) proving init ran. `version()` returns `1` on both contracts. Read-only invokes only simulate; 25.x CLI prints `Simulation identified as read-only. Send by rerunning with --send=yes` before the result — the result is still printed. |
 
 ## Gotchas learned (append after each surprise)
 
@@ -106,6 +110,10 @@ If anything in this file contradicts those docs, those docs win.
 - `soroban_sdk::token::Client` is a **deprecated alias** — use `soroban_sdk::token::TokenClient` (read-only) and `soroban_sdk::token::StellarAssetClient` (admin/mint-capable) directly.
 - `env.register_stellar_asset_contract_v2(admin: Address) -> StellarAssetContract` (25.x testutils) is the supported way to deploy a SAC in tests. Call `.address()` on the return value. The old `register_stellar_asset_contract` (v1) is gone.
 - Clippy `-D warnings` flags `&env.current_contract_address()` as `needless_borrows_for_generic_args` because the generated token client methods take generic `IntoVal` args. Hoist to `let contract_addr = env.current_contract_address();` and borrow that instead of inlining.
+- stellar-cli 25.x: `stellar contract build --optimize` writes the wasm **in place** (same filename, NO `.optimized.wasm` suffix). Plans/scripts inherited from older versions that expect a separate `.optimized.wasm` file must be rewritten.
+- `stellar contract invoke` uses `--source-account` (not `--source`) as the canonical flag in 25.x. `--source` is still an alias but `--source-account` is what `--help` shows.
+- Multi-line shell commands with `\` line continuations pasted into a single-line bash wrapper sometimes introduce an empty `''` arg that stellar-cli rejects as "unexpected argument ''". Inline the command on one line when shelling it out from tool calls.
+- Read-only contract calls in 25.x print `Simulation identified as read-only. Send by rerunning with --send=yes` to stderr, then the result to stdout. The result IS returned — ignore the suggestion unless you actually need to write to ledger.
 
 ## Open risks / things to verify during implementation
 

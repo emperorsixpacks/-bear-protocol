@@ -10,9 +10,14 @@ Single-page status tracker. **If you're a Claude agent picking up this project, 
 
 ## Current state
 
-**Phase:** 3 (Testnet deployment)
-**Last completed:** Phase 2 — `agentic_commerce` contract fully green (12 tests, 9387 B optimized WASM, 10 entry points, clippy clean)
-**Next action:** Phase 3 Task 3.1 — `stellar keys generate deployer --network testnet --fund`
+**Phase:** 4 (TypeScript SDK)
+**Last completed:** Phase 3 — both contracts live on Stellar testnet, `fee_bps()` returns 100 ✅
+**Next action:** Phase 4 Task 4.1 — write `sdk/src/types.ts` (Address, Agent, Job, JobStatus, deployment addresses)
+
+**Deployed contracts (testnet):**
+- `agent_identity`   = `CAMPXYFZJTIPEVOPOAZPRG5OHXKNBDPGTPRCOIO4LVPGEM4TONPY65A5`
+- `agentic_commerce` = `CD2KWU7IE74Z2QKVP3FQ67J46XHNMGIDTNKXVWE7ZNVRC7T6UH46GQXE`
+- `deployer`         = `GA5VIZYCUM3IUZZNQTTB7YSLJSE5WZ2EI5EGWNLTWQ234SLSH45MPKX3`
 
 ---
 
@@ -23,8 +28,8 @@ Single-page status tracker. **If you're a Claude agent picking up this project, 
 | 0 | Workspace scaffolding | ✅ done | 3/3 | Rust workspace + SDK + demo + landing + scripts |
 | 1 | `agent_identity` contract | ✅ done | 5/5 | 7 tests green, 4.2 KB WASM, 6 entry points |
 | 2 | `agentic_commerce` contract | ✅ done | 7/7 | 12 tests green, 9.4 KB WASM, 10 entry points, 99/1 fee split verified |
-| **3** | **Testnet deployment** | 🚧 **in progress** | **0/2** | `stellar keys generate` + deploy script |
-| 4 | TypeScript SDK | ⬜ todo | 0/6 | types, IdentityClient, CommerceClient, marcPaywall, marcFetch, index |
+| 3 | Testnet deployment | ✅ done | 3/3 | Both contracts live, init invoked, fee_bps=100 verified |
+| **4** | **TypeScript SDK** | 🚧 **in progress** | **0/6** | types, IdentityClient, CommerceClient, marcPaywall, marcFetch, index |
 | 5 | CLI demo | ⬜ todo | 0/4 | seller-agent, buyer-agent, lifecycle orchestrator, dry run |
 | 6 | Landing page | ⬜ todo | 0/4 | HTML + CSS + JS + Vercel deploy |
 | 7 | Submission materials | ⬜ todo | 0/6 | README, LIGHTPAPER, PROTOCOL, pitch video, DoraHacks form, git tag |
