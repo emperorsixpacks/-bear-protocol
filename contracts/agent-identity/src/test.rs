@@ -65,3 +65,48 @@ fn update_uri_rejects_non_owner() {
     let id = client.register(&alice, &String::from_str(&env, "ipfs://a1.json"));
     client.update_uri(&mallory, &id, &String::from_str(&env, "ipfs://hax.json"));
 }
+
+#[test]
+fn deregister_removes_agent_and_owner_lookup() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(AgentIdentityContract, ());
+    let client = AgentIdentityContractClient::new(&env, &contract_id);
+
+    let alice = Address::generate(&env);
+    let id = client.register(&alice, &String::from_str(&env, "ipfs://a.json"));
+    client.deregister(&alice, &id);
+
+    assert!(client.get_agent(&id).is_none());
+    assert_eq!(client.agent_of(&alice), None);
+}
+
+#[test]
+#[should_panic(expected = "not agent owner")]
+fn deregister_rejects_non_owner() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(AgentIdentityContract, ());
+    let client = AgentIdentityContractClient::new(&env, &contract_id);
+
+    let alice = Address::generate(&env);
+    let mallory = Address::generate(&env);
+    let id = client.register(&alice, &String::from_str(&env, "ipfs://a.json"));
+    client.deregister(&mallory, &id);
+}
+
+#[test]
+fn deregister_allows_same_owner_to_re_register() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(AgentIdentityContract, ());
+    let client = AgentIdentityContractClient::new(&env, &contract_id);
+
+    let alice = Address::generate(&env);
+    let id1 = client.register(&alice, &String::from_str(&env, "ipfs://a1.json"));
+    client.deregister(&alice, &id1);
+    let id2 = client.register(&alice, &String::from_str(&env, "ipfs://a2.json"));
+    // Sequential id continues — we don't reuse ids.
+    assert_eq!(id2, 2);
+    assert_eq!(client.agent_of(&alice), Some(2u64));
+}

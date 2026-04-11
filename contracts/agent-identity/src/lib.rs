@@ -35,6 +35,14 @@ pub struct UriUpdated {
     pub agent_id: u64,
 }
 
+/// Emitted when an agent is removed from the registry.
+#[contractevent]
+pub struct Deregistered {
+    #[topic]
+    pub owner: Address,
+    pub agent_id: u64,
+}
+
 #[contract]
 pub struct AgentIdentityContract;
 
@@ -95,6 +103,30 @@ impl AgentIdentityContract {
 
         UriUpdated {
             owner: caller,
+            agent_id: id,
+        }
+        .publish(&env);
+    }
+
+    /// Remove an agent from the registry. Caller must be the current owner.
+    /// Frees the OwnerToId slot so the same address can re-register later.
+    pub fn deregister(env: Env, caller: Address, id: u64) {
+        caller.require_auth();
+        let agent: Agent = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Agent(id))
+            .unwrap_or_else(|| panic!("agent not found"));
+        if agent.owner != caller {
+            panic!("not agent owner");
+        }
+        env.storage().persistent().remove(&DataKey::Agent(id));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::OwnerToId(agent.owner.clone()));
+
+        Deregistered {
+            owner: agent.owner,
             agent_id: id,
         }
         .publish(&env);
