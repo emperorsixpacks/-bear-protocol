@@ -33,13 +33,32 @@ Think of x402/MPP as the rail and MARC as the marketplace contract riding on top
 | 2 | `agent_identity` Soroban contract | Rust | Agent registration (address, metadata URI, optional domain) |
 | 3 | `marc-stellar-sdk` TypeScript package | Node | Wrapper over `x402-stellar` + typed helpers for both contracts |
 | 4 | CLI demo (`buyer-agent.ts`, `seller-agent.ts`, `lifecycle.ts`) | Node | Video-recordable end-to-end: register identity → create job → pay via x402 → deliver → release escrow |
-| 5 | Static landing page (`index.html`) | HTML/CSS | Pitch, contract addresses, demo GIF, GitHub link |
+| 5 | Static landing page (`index.html`) | HTML/CSS/vanilla JS | Pitch, contract addresses, demo GIF, GitHub link. Visual identity 1:1 with `marcprotocol.com` per `docs/design-system.md` |
 | 6 | README + 1-page LIGHTPAPER + 2-min pitch video + DoraHacks submission | Markdown / MP4 | Submission deliverables |
+
+### Frontend scope (LOCKED: landing page only)
+
+We are building **one** static landing page (`landing/index.html` + `style.css` + `app.js`), not a dashboard app. The dashboard tabs shown on `marcprotocol.com` (Agents / Dashboard / Jobs / Wallet) are **cut** — a real dashboard would cost 6-10h and contribute nothing to the "commerce layer on x402/MPP" narrative judges care about. The CLI demo video is our functional proof; the landing page is our pitch surface.
+
+Landing page structure (top to bottom):
+1. **Nav bar** — logo + Home/Protocol/About + GitHub/X icons + "Launch Docs" orange pill (no app to launch — pill links to README)
+2. **Hero** — wireframe geodesic sphere SVG, two-line headline ("The Commerce Layer for / Agent Payments."), subtitle, two pill CTAs (Read Docs, View on GitHub)
+3. **Protocol stack section** — 3 cards: Agentic Commerce (Soroban escrow), Agent Identity (Soroban registry), x402 + MPP Integration (Stellar rails)
+4. **How it works section** — numbered 4-step flow (register → create job → deliver via x402 → approve & release)
+5. **Deployed contracts section** — contract addresses on Stellar testnet + Stellar Expert links
+6. **Footer** — small print, links
+
+Tech: plain HTML + CSS + vanilla JS (no React, no build step). Inter via Google Fonts CDN. Lucide icons via CDN. Visual tokens per `docs/design-system.md`. Hosted on Vercel (drag-and-drop deploy, no CI).
+
+Time budget: **3-4 hours on Day 2**, after the CLI demo is working. If running behind, cut sections 4 and 5 first; keep nav + hero + protocol stack + footer at minimum.
 
 ### Not building (stretch only if Day 2 ends early)
 
 - `agent_reputation` contract (feedback + scores)
-- React frontend with tabs
+- React dashboard app (Agents / Jobs / Wallet tabs from the reference site)
+- Dark mode toggle on the landing page
+- Animated geodesic sphere rotation
+- Orange dot particle background
 - Framework plugins (Virtuals GAME, OpenClaw, ElizaOS)
 - Test suite beyond ~25 smoke tests
 - Reputation-weighted escrow release
@@ -330,5 +349,7 @@ None. All decisions locked by AI with user authorization to decide.
 
 - Original MARC repo on disk: `/Users/ram/Desktop/marc`
 - Hackathon resources: `.claude/skills/stellar-hackathon/SKILL.md`
+- Design system (tokens + component specs): `docs/design-system.md`
+- Live reference site (visual identity): `https://marcprotocol.com`
 - MARC's ERC-8183 job escrow: `/Users/ram/Desktop/marc/contracts/AgenticCommerceProtocol.sol` (read before porting)
 - MARC's ERC-8004 identity: `/Users/ram/Desktop/marc/contracts/AgentIdentityRegistry.sol` (read before porting)
