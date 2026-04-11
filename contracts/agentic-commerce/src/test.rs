@@ -177,3 +177,53 @@ fn complete_rejects_non_evaluator() {
     client.submit(&seller, &id, &String::from_str(&env, "ipfs://work.json"));
     client.complete(&mallory, &id);
 }
+
+#[test]
+fn cancel_refunds_buyer_when_not_yet_submitted() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _treasury) = setup(&env);
+    let buyer = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let (token_addr, token, stellar_token) = deploy_token(&env, &admin);
+    stellar_token.mint(&buyer, &1_000_000);
+
+    let id = client.create_job(
+        &buyer,
+        &seller,
+        &buyer,
+        &token_addr,
+        &100_000i128,
+        &String::from_str(&env, "ipfs://job.json"),
+    );
+    assert_eq!(token.balance(&buyer), 900_000);
+
+    client.cancel(&buyer, &id);
+    assert_eq!(token.balance(&buyer), 1_000_000);
+    assert_eq!(token.balance(&client.address), 0);
+    let job = client.get_job(&id).unwrap();
+    assert_eq!(job.status, JobStatus::Cancelled);
+}
+
+#[test]
+#[should_panic(expected = "not client")]
+fn cancel_rejects_non_client() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _treasury) = setup(&env);
+    let buyer = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let mallory = Address::generate(&env);
+    let (token_addr, _token, stellar_token) = deploy_token(&env, &admin);
+    stellar_token.mint(&buyer, &1_000_000);
+
+    let id = client.create_job(
+        &buyer,
+        &seller,
+        &buyer,
+        &token_addr,
+        &100_000i128,
+        &String::from_str(&env, "ipfs://job.json"),
+    );
+    client.cancel(&mallory, &id);
+}

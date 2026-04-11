@@ -72,6 +72,14 @@ pub struct JobCompleted {
     pub fee: i128,
 }
 
+/// Emitted when a job is cancelled and refunded.
+#[contractevent]
+pub struct JobCancelled {
+    #[topic]
+    pub client: Address,
+    pub job_id: u64,
+}
+
 #[contract]
 pub struct AgenticCommerceContract;
 
@@ -198,6 +206,32 @@ impl AgenticCommerceContract {
             job_id: id,
             payout,
             fee,
+        }
+        .publish(&env);
+    }
+
+    /// Client cancels a funded (not-yet-submitted) job and reclaims the full budget.
+    pub fn cancel(env: Env, caller: Address, id: u64) {
+        caller.require_auth();
+        let mut job: Job = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Job(id))
+            .unwrap_or_else(|| panic!("job not found"));
+        if caller != job.client {
+            panic!("not client");
+        }
+        if job.status != JobStatus::Funded {
+            panic!("invalid status");
+        }
+        let token_client = token::TokenClient::new(&env, &job.token);
+        token_client.transfer(&env.current_contract_address(), &job.client, &job.budget);
+        job.status = JobStatus::Cancelled;
+        env.storage().persistent().set(&DataKey::Job(id), &job);
+
+        JobCancelled {
+            client: caller,
+            job_id: id,
         }
         .publish(&env);
     }
