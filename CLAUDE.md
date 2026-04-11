@@ -71,7 +71,8 @@ If anything in this file contradicts those docs, those docs win.
 
 | Date | Task | Outcome | Notes |
 |---|---|---|---|
-| 2026-04-11 | Scaffolding: hackathon skill, design spec, design system, impl plan, CLAUDE.md | ✅ | All 5 committed. Ready to begin Phase 0 Task 0.1. |
+| 2026-04-11 | Scaffolding: hackathon skill, design spec, design system, impl plan, CLAUDE.md | ✅ | All 5 committed. |
+| 2026-04-11 | Phase 0.1: Cargo workspace root | ✅ | `Cargo.toml` + `rust-toolchain.toml` + `.gitignore` + `deployments/.gitkeep`. Workspace parses (`cargo metadata` clean). **Plan drift:** members list is empty for now — each phase adds its own crate to the list when scaffolding it. Plan section 0.1 step 1 shows members populated upfront, but that fails `cargo metadata` because the crates don't exist yet. Fixed in-place and documented. |
 
 ## Gotchas learned (append after each surprise)
 
@@ -80,6 +81,7 @@ If anything in this file contradicts those docs, those docs win.
 - `cargo search` can be stale — prefer `cargo info <crate>` or the crates.io JSON API for live version data.
 - soroban-sdk 26.0.0 was published 2026-04-09 (2 days before this hackathon). Unverified against CLI 25.2.0. Stick with 25.3.1.
 - In Soroban 22+, the testutils `env.register(Contract, ())` returns a contract ID directly — no separate `register_contract` helper needed.
+- Cargo workspace `members = [...]` list must reference existing crates — can't list them upfront. Use empty list and add each member when scaffolding its crate.
 
 ## Open risks / things to verify during implementation
 
