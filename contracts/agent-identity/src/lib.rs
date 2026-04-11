@@ -27,6 +27,14 @@ pub struct Registered {
     pub agent_id: u64,
 }
 
+/// Emitted when an agent owner updates their metadata URI.
+#[contractevent]
+pub struct UriUpdated {
+    #[topic]
+    pub owner: Address,
+    pub agent_id: u64,
+}
+
 #[contract]
 pub struct AgentIdentityContract;
 
@@ -69,6 +77,27 @@ impl AgentIdentityContract {
         .publish(&env);
 
         next
+    }
+
+    /// Update the metadata URI of an agent. Caller must be the current owner.
+    pub fn update_uri(env: Env, caller: Address, id: u64, new_uri: String) {
+        caller.require_auth();
+        let mut agent: Agent = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Agent(id))
+            .unwrap_or_else(|| panic!("agent not found"));
+        if agent.owner != caller {
+            panic!("not agent owner");
+        }
+        agent.uri = new_uri;
+        env.storage().persistent().set(&DataKey::Agent(id), &agent);
+
+        UriUpdated {
+            owner: caller,
+            agent_id: id,
+        }
+        .publish(&env);
     }
 
     /// Fetch an agent by id.

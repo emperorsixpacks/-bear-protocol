@@ -36,3 +36,32 @@ fn register_assigns_sequential_ids_and_stores_agent() {
     assert_eq!(client.agent_of(&alice), Some(1u64));
     assert_eq!(client.agent_of(&bob), Some(2u64));
 }
+
+#[test]
+fn update_uri_changes_the_agent_uri() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(AgentIdentityContract, ());
+    let client = AgentIdentityContractClient::new(&env, &contract_id);
+
+    let alice = Address::generate(&env);
+    let id = client.register(&alice, &String::from_str(&env, "ipfs://a1.json"));
+    client.update_uri(&alice, &id, &String::from_str(&env, "ipfs://a2.json"));
+
+    let agent = client.get_agent(&id).unwrap();
+    assert_eq!(agent.uri, String::from_str(&env, "ipfs://a2.json"));
+}
+
+#[test]
+#[should_panic(expected = "not agent owner")]
+fn update_uri_rejects_non_owner() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(AgentIdentityContract, ());
+    let client = AgentIdentityContractClient::new(&env, &contract_id);
+
+    let alice = Address::generate(&env);
+    let mallory = Address::generate(&env);
+    let id = client.register(&alice, &String::from_str(&env, "ipfs://a1.json"));
+    client.update_uri(&mallory, &id, &String::from_str(&env, "ipfs://hax.json"));
+}
