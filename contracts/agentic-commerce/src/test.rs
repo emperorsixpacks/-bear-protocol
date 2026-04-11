@@ -1,6 +1,7 @@
 use super::*;
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{Address, Env};
+use soroban_sdk::token::{StellarAssetClient, TokenClient};
+use soroban_sdk::{Address, Env, String};
 
 fn setup<'a>(env: &Env) -> (AgenticCommerceContractClient<'a>, Address, Address) {
     let admin = Address::generate(env);
@@ -9,6 +10,19 @@ fn setup<'a>(env: &Env) -> (AgenticCommerceContractClient<'a>, Address, Address)
     let client = AgenticCommerceContractClient::new(env, &contract_id);
     client.init(&admin, &treasury);
     (client, admin, treasury)
+}
+
+fn deploy_token<'a>(
+    env: &Env,
+    admin: &Address,
+) -> (Address, TokenClient<'a>, StellarAssetClient<'a>) {
+    let contract = env.register_stellar_asset_contract_v2(admin.clone());
+    let addr = contract.address();
+    (
+        addr.clone(),
+        TokenClient::new(env, &addr),
+        StellarAssetClient::new(env, &addr),
+    )
 }
 
 #[test]
@@ -25,4 +39,40 @@ fn init_rejects_double_initialization() {
     env.mock_all_auths();
     let (client, admin, treasury) = setup(&env);
     client.init(&admin, &treasury);
+}
+
+#[test]
+fn create_job_transfers_budget_into_escrow() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _treasury) = setup(&env);
+
+    let buyer = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let evaluator = buyer.clone();
+
+    let (token_addr, token, stellar_token) = deploy_token(&env, &admin);
+    stellar_token.mint(&buyer, &1_000_000);
+
+    let contract_id = client.address.clone();
+    let budget: i128 = 100_000;
+
+    let job_id = client.create_job(
+        &buyer,
+        &seller,
+        &evaluator,
+        &token_addr,
+        &budget,
+        &String::from_str(&env, "ipfs://job.json"),
+    );
+
+    assert_eq!(job_id, 1);
+    assert_eq!(token.balance(&contract_id), 100_000);
+    assert_eq!(token.balance(&buyer), 900_000);
+
+    let job = client.get_job(&job_id).unwrap();
+    assert_eq!(job.status, JobStatus::Funded);
+    assert_eq!(job.budget, budget);
+    assert_eq!(job.client, buyer);
+    assert_eq!(job.provider, seller);
 }
