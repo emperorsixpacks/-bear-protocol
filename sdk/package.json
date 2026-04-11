@@ -1,0 +1,28 @@
+{
+  "name": "marc-stellar-sdk",
+  "version": "0.1.0",
+  "description": "Commerce layer SDK for MARC on Stellar — typed helpers for agent_identity + agentic_commerce contracts, plus x402-stellar re-exports.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^12.3.0",
+    "x402-stellar": "^0.2.0"
+  },
+  "peerDependencies": {
+    "express": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
