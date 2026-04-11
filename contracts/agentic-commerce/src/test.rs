@@ -76,3 +76,52 @@ fn create_job_transfers_budget_into_escrow() {
     assert_eq!(job.client, buyer);
     assert_eq!(job.provider, seller);
 }
+
+#[test]
+fn submit_flips_status_and_records_deliverable() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _treasury) = setup(&env);
+    let buyer = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let (token_addr, _token, stellar_token) = deploy_token(&env, &admin);
+    stellar_token.mint(&buyer, &1_000_000);
+
+    let id = client.create_job(
+        &buyer,
+        &seller,
+        &buyer,
+        &token_addr,
+        &100_000i128,
+        &String::from_str(&env, "ipfs://job.json"),
+    );
+
+    client.submit(&seller, &id, &String::from_str(&env, "ipfs://work.json"));
+
+    let job = client.get_job(&id).unwrap();
+    assert_eq!(job.status, JobStatus::Submitted);
+    assert_eq!(job.deliverable, String::from_str(&env, "ipfs://work.json"));
+}
+
+#[test]
+#[should_panic(expected = "not provider")]
+fn submit_rejects_non_provider() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _treasury) = setup(&env);
+    let buyer = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let mallory = Address::generate(&env);
+    let (token_addr, _token, stellar_token) = deploy_token(&env, &admin);
+    stellar_token.mint(&buyer, &1_000_000);
+
+    let id = client.create_job(
+        &buyer,
+        &seller,
+        &buyer,
+        &token_addr,
+        &100_000i128,
+        &String::from_str(&env, "ipfs://job.json"),
+    );
+    client.submit(&mallory, &id, &String::from_str(&env, "ipfs://hax.json"));
+}

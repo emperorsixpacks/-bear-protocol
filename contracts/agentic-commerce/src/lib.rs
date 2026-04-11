@@ -54,6 +54,14 @@ pub struct JobCreated {
     pub budget: i128,
 }
 
+/// Emitted when the provider submits a deliverable.
+#[contractevent]
+pub struct JobSubmitted {
+    #[topic]
+    pub provider: Address,
+    pub job_id: u64,
+}
+
 #[contract]
 pub struct AgenticCommerceContract;
 
@@ -120,6 +128,31 @@ impl AgenticCommerceContract {
         .publish(&env);
 
         next
+    }
+
+    /// Provider submits the deliverable. Flips status Funded → Submitted.
+    pub fn submit(env: Env, caller: Address, id: u64, deliverable: String) {
+        caller.require_auth();
+        let mut job: Job = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Job(id))
+            .unwrap_or_else(|| panic!("job not found"));
+        if caller != job.provider {
+            panic!("not provider");
+        }
+        if job.status != JobStatus::Funded {
+            panic!("invalid status");
+        }
+        job.status = JobStatus::Submitted;
+        job.deliverable = deliverable;
+        env.storage().persistent().set(&DataKey::Job(id), &job);
+
+        JobSubmitted {
+            provider: caller,
+            job_id: id,
+        }
+        .publish(&env);
     }
 
     /// Fetch a job by id.
