@@ -1,0 +1,24 @@
+{
+  "name": "marc-stellar-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seller": "tsx seller-agent.ts",
+    "buyer": "tsx buyer-agent.ts",
+    "lifecycle": "tsx lifecycle.ts"
+  },
+  "dependencies": {
+    "marc-stellar-sdk": "file:../sdk",
+    "@stellar/stellar-sdk": "^12.3.0",
+    "x402-stellar": "^0.2.0",
+    "express": "^4.19.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

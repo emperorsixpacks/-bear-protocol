@@ -74,6 +74,7 @@ If anything in this file contradicts those docs, those docs win.
 | 2026-04-11 | Scaffolding: hackathon skill, design spec, design system, impl plan, CLAUDE.md | ✅ | All 5 committed. |
 | 2026-04-11 | Phase 0.1: Cargo workspace root | ✅ | `Cargo.toml` + `rust-toolchain.toml` + `.gitignore` + `deployments/.gitkeep`. Workspace parses (`cargo metadata` clean). **Plan drift:** members list is empty for now — each phase adds its own crate to the list when scaffolding it. Plan section 0.1 step 1 shows members populated upfront, but that fails `cargo metadata` because the crates don't exist yet. Fixed in-place and documented. |
 | 2026-04-11 | Phase 0.2: SDK package scaffold | ✅ | `sdk/package.json` + `tsconfig.json` + `src/index.ts` stub + `README.md`. `npm install` clean (125 pkgs, 0 vulns). `npx tsc --noEmit` clean. **Plan drift:** `@stellar/stellar-sdk` pinned to `^12.3.0` (not ^13) because `x402-stellar@0.2.0` requires peer `^12.0.0`. Latest stellar-sdk is 15.0.1 but we can't use it. Phase 4 SDK code must target stellar-sdk 12.x API (`SorobanRpc.Server`, not `rpc.Server`). |
+| 2026-04-11 | Phase 0.3: Demo + landing + scripts | ✅ | `demo/package.json` (with `marc-stellar-sdk` as file: dep) + `tsconfig.json` + `.env.example`, `landing/.gitkeep`, `scripts/build.sh` + `scripts/deploy-testnet.sh` (skeleton, exit 1). Both scripts chmod +x. Demo also pinned to stellar-sdk ^12.3.0. npm install deferred until Phase 5 so we're not carrying duplicate node_modules. |
 
 ## Gotchas learned (append after each surprise)
 
