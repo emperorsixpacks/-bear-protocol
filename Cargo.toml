@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
-members = []
-# Members are added by each phase as they scaffold:
-#   Phase 1 Task 1.1 adds "contracts/agent-identity"
-#   Phase 2 Task 2.1 adds "contracts/agentic-commerce"
+members = [
+    "contracts/agent-identity",
+]
+# Phase 2 Task 2.1 adds "contracts/agentic-commerce"
 
 [workspace.package]
 version = "0.1.0"
