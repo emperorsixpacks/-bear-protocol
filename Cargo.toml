@@ -2,8 +2,8 @@
 resolver = "2"
 members = [
     "contracts/agent-identity",
+    "contracts/agentic-commerce",
 ]
-# Phase 2 Task 2.1 adds "contracts/agentic-commerce"
 
 [workspace.package]
 version = "0.1.0"
