@@ -38,9 +38,7 @@ enum DataKey {
 }
 
 const DEFAULT_FEE_BPS: u32 = 100; // 1%
-#[allow(dead_code)]
-const MAX_FEE_BPS: u32 = 500; // 5% hard cap (used in Task 2.6)
-#[allow(dead_code)]
+const MAX_FEE_BPS: u32 = 500; // 5% hard cap
 const BPS_DENOM: i128 = 10_000;
 
 // --- Events ---
@@ -234,6 +232,36 @@ impl AgenticCommerceContract {
             job_id: id,
         }
         .publish(&env);
+    }
+
+    /// Admin updates the treasury address.
+    pub fn set_treasury(env: Env, caller: Address, new_treasury: Address) {
+        caller.require_auth();
+        let admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
+        if caller != admin {
+            panic!("not admin");
+        }
+        env.storage()
+            .instance()
+            .set(&DataKey::Treasury, &new_treasury);
+    }
+
+    /// Admin updates the platform fee (in basis points). Capped at MAX_FEE_BPS.
+    pub fn set_fee_bps(env: Env, caller: Address, new_bps: u32) {
+        caller.require_auth();
+        let admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
+        if caller != admin {
+            panic!("not admin");
+        }
+        if new_bps > MAX_FEE_BPS {
+            panic!("fee too high");
+        }
+        env.storage().instance().set(&DataKey::FeeBps, &new_bps);
+    }
+
+    /// Current fee in basis points.
+    pub fn fee_bps(env: Env) -> u32 {
+        env.storage().instance().get(&DataKey::FeeBps).unwrap()
     }
 
     /// Fetch a job by id.

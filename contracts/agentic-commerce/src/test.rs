@@ -227,3 +227,34 @@ fn cancel_rejects_non_client() {
     );
     client.cancel(&mallory, &id);
 }
+
+#[test]
+fn admin_can_update_treasury_and_fee_within_cap() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _treasury) = setup(&env);
+    let new_treasury = Address::generate(&env);
+    client.set_treasury(&admin, &new_treasury);
+    client.set_fee_bps(&admin, &200u32);
+    assert_eq!(client.fee_bps(), 200);
+}
+
+#[test]
+#[should_panic(expected = "fee too high")]
+fn set_fee_bps_rejects_over_max() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _treasury) = setup(&env);
+    client.set_fee_bps(&admin, &501u32);
+}
+
+#[test]
+#[should_panic(expected = "not admin")]
+fn set_treasury_rejects_non_admin() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _admin, _treasury) = setup(&env);
+    let mallory = Address::generate(&env);
+    let new_treasury = Address::generate(&env);
+    client.set_treasury(&mallory, &new_treasury);
+}
