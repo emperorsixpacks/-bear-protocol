@@ -75,6 +75,11 @@ If anything in this file contradicts those docs, those docs win.
 | 2026-04-11 | Phase 0.1: Cargo workspace root | ✅ | `Cargo.toml` + `rust-toolchain.toml` + `.gitignore` + `deployments/.gitkeep`. Workspace parses (`cargo metadata` clean). **Plan drift:** members list is empty for now — each phase adds its own crate to the list when scaffolding it. Plan section 0.1 step 1 shows members populated upfront, but that fails `cargo metadata` because the crates don't exist yet. Fixed in-place and documented. |
 | 2026-04-11 | Phase 0.2: SDK package scaffold | ✅ | `sdk/package.json` + `tsconfig.json` + `src/index.ts` stub + `README.md`. `npm install` clean (125 pkgs, 0 vulns). `npx tsc --noEmit` clean. **Plan drift:** `@stellar/stellar-sdk` pinned to `^12.3.0` (not ^13) because `x402-stellar@0.2.0` requires peer `^12.0.0`. Latest stellar-sdk is 15.0.1 but we can't use it. Phase 4 SDK code must target stellar-sdk 12.x API (`SorobanRpc.Server`, not `rpc.Server`). |
 | 2026-04-11 | Phase 0.3: Demo + landing + scripts | ✅ | `demo/package.json` (with `marc-stellar-sdk` as file: dep) + `tsconfig.json` + `.env.example`, `landing/.gitkeep`, `scripts/build.sh` + `scripts/deploy-testnet.sh` (skeleton, exit 1). Both scripts chmod +x. Demo also pinned to stellar-sdk ^12.3.0. npm install deferred until Phase 5 so we're not carrying duplicate node_modules. |
+| 2026-04-11 | Phase 1.1: agent-identity scaffold + smoke test | ✅ | `contracts/agent-identity/{Cargo.toml,src/lib.rs,src/test.rs}`, added to workspace members. Smoke test uses `env.register(Contract, ())` (25.x API). Needed a `version()` stub so the `#[contractimpl]` isn't empty. |
+| 2026-04-11 | Phase 1.2: register + get_agent + agent_of | ✅ | TDD: failing test → impl → 2 passing. **Idiom gotcha caught:** `env.events().publish` is deprecated in 25.x; migrated to `#[contractevent]` struct macro with `#[topic]` field attribute. Events are now type-safe and included in the contract's ABI spec. |
+| 2026-04-11 | Phase 1.3: update_uri (owner-only) | ✅ | 2 new tests (happy + `#[should_panic(expected = "not agent owner")]`). `UriUpdated` event. 4 total tests green. |
+| 2026-04-11 | Phase 1.4: deregister | ✅ | 3 new tests: cleanup, non-owner reject, re-register-after-deregister (ids are sequential, never reused). `Deregistered` event. 7 total tests green. |
+| 2026-04-11 | Phase 1.5: build release WASM + optimize | ✅ | `cargo build --target wasm32v1-none --release` → 4900 B. `stellar contract build --optimize` → 4242 B with 6 exported functions: `agent_of`, `deregister`, `get_agent`, `register`, `update_uri`, `version`. **Gotcha:** `stellar contract optimize` is deprecated; must use `build --optimize`. Updated `scripts/build.sh`. |
 
 ## Gotchas learned (append after each surprise)
 
@@ -84,6 +89,11 @@ If anything in this file contradicts those docs, those docs win.
 - soroban-sdk 26.0.0 was published 2026-04-09 (2 days before this hackathon). Unverified against CLI 25.2.0. Stick with 25.3.1.
 - In Soroban 22+, the testutils `env.register(Contract, ())` returns a contract ID directly — no separate `register_contract` helper needed.
 - Cargo workspace `members = [...]` list must reference existing crates — can't list them upfront. Use empty list and add each member when scaffolding its crate.
+- `soroban-sdk` 25.x **deprecates `env.events().publish()`** — use `#[contractevent]` struct with `#[topic]` field attrs and call `.publish(&env)` on an instance. Events are then type-safe and show up in the contract ABI spec. Plan was written for the old API; migrated in Phase 1.2.
+- `soroban-sdk` 25.x **auto-generates `contracts/<crate>/test_snapshots/test/<test_name>.<n>.json`** when tests run. These are committed so test output is reproducible across runs and CI.
+- `stellar contract optimize --wasm <path>` is **deprecated** in stellar-cli 25.x. Use `stellar contract build --optimize` instead — it builds, optimizes, hashes, and lists exported functions in one pass. `scripts/build.sh` uses the new command.
+- An empty `#[contractimpl]` block (no entry points) is allowed to compile but gives you a client type that can't be used. Always keep at least a `version() -> u32` stub in the initial scaffold.
+- Inside `#[contractimpl]` methods, the `env` argument is a normal owned `Env` (not `&Env`), and Rust's `Address` ownership rules mean you need `owner.clone()` at every callsite that reuses the same address after `require_auth()` or storage ops.
 
 ## Open risks / things to verify during implementation
 
