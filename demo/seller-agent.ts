@@ -45,6 +45,7 @@ app.use(
     network: "stellar-testnet",
     description: "One MARC-protected API call",
     facilitatorUrl: process.env.X402_FACILITATOR_URL,
+    facilitatorApiKey: process.env.X402_FACILITATOR_API_KEY,
   }),
 );
 

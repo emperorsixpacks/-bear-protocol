@@ -22,8 +22,10 @@ export interface MarcPaywallOptions {
   network?: "stellar-testnet" | "stellar";
   /** Human-readable description of what's being purchased. */
   description?: string;
-  /** Facilitator service config. Uses default if omitted. */
+  /** Facilitator service config. Uses x402-stellar default if omitted. */
   facilitatorUrl?: string;
+  /** API key for the facilitator (Bearer auth). */
+  facilitatorApiKey?: string;
   /** Max seconds the payment is valid for. Default 300 (5 min). */
   maxTimeoutSeconds?: number;
 }
@@ -45,11 +47,20 @@ export function marcPaywall(opts: MarcPaywallOptions) {
     network = "stellar-testnet",
     description = "",
     facilitatorUrl,
+    facilitatorApiKey,
     maxTimeoutSeconds = 300,
   } = opts;
 
   const facilitatorCfg: FacilitatorConfig | undefined = facilitatorUrl
-    ? { url: facilitatorUrl }
+    ? {
+        url: facilitatorUrl,
+        ...(facilitatorApiKey && {
+          createAuthHeaders: async () => {
+            const headers = { Authorization: `Bearer ${facilitatorApiKey}` };
+            return { verify: headers, settle: headers, supported: headers };
+          },
+        }),
+      }
     : undefined;
 
   const { verify, settle } = useFacilitator(facilitatorCfg);
