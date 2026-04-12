@@ -93,7 +93,12 @@ If anything in this file contradicts those docs, those docs win.
 | 2026-04-11 | Phase 3.1: deployer identity + friendbot fund | ✅ | `stellar keys generate deployer --network testnet --fund` saved key to `~/.config/stellar/identity/deployer.toml`. Address: `GA5VIZYCUM3IUZZNQTTB7YSLJSE5WZ2EI5EGWNLTWQ234SLSH45MPKX3`. |
 | 2026-04-11 | Phase 3.2: testnet deploy + init | ✅ | `./scripts/deploy-testnet.sh` uploaded 2 WASMs, deployed 2 contracts, invoked `init`. Addresses: `agent_identity = CAMPXYFZJTIPEVOPOAZPRG5OHXKNBDPGTPRCOIO4LVPGEM4TONPY65A5`, `agentic_commerce = CD2KWU7IE74Z2QKVP3FQ67J46XHNMGIDTNKXVWE7ZNVRC7T6UH46GQXE`. Written to `deployments/testnet.json` (gitignored). |
 | 2026-04-11 | Phase 3 sanity: live invoke | ✅ | `fee_bps()` on commerce returns `100` (1%) proving init ran. `version()` returns `1` on both contracts. Read-only invokes only simulate; 25.x CLI prints `Simulation identified as read-only. Send by rerunning with --send=yes` before the result — the result is still printed. |
-| 2026-04-11 | Phase 4.1: sdk/src/types.ts | ✅ | `Address`, `Agent`, `Job`, `JobStatus`, `MarcConfig` mirroring on-chain structs. `bigint` for `u64`/`i128`. Added `TESTNET` preset with deployed addresses (CAMPXYFZ... / CD2KWU7I...) pulled from `deployments/testnet.json`. `npx tsc` clean; emits `dist/types.{js,d.ts}`. |
+| 2026-04-11 | Phase 4.1: sdk/src/types.ts | ✅ | `Address`, `Agent`, `Job`, `JobStatus`, `MarcConfig` mirroring on-chain structs. `bigint` for `u64`/`i128`. `TESTNET` preset with deployed addresses + `usdcToken` from x402-stellar's `STELLAR_TOKENS["stellar-testnet"].USDC`. |
+| 2026-04-12 | Phase 4.2: sdk/src/identity.ts | ✅ | `IdentityClient`: register, getAgent, agentOf, updateUri, deregister. `rpc.Server` verified identical to `SorobanRpc.Server` in 12.3.0 — plan's imports work as-is, no rename needed. |
+| 2026-04-12 | Phase 4.3: sdk/src/commerce.ts | ✅ | `CommerceClient`: createJob, submit, complete, cancel, getJob, feeBps, setTreasury, setFeeBps. Same invoke/simulate pattern. ScVal encoding: i128 for budget, u64 for job IDs, u32 for fee bps. |
+| 2026-04-12 | Phase 4.4: sdk/src/marcPaywall.ts | ✅ | Express middleware using x402-stellar's real `useFacilitator` API (verify+settle). **Plan drift:** plan assumed `paymentMiddleware` export which does NOT exist in x402-stellar@0.2.0. Built our own middleware from primitives. |
+| 2026-04-12 | Phase 4.5: sdk/src/marcFetch.ts | ✅ | Auto-402 fetch wrapper. Detects 402, reads `X-PAYMENT-REQUIREMENTS`, builds+signs Stellar payment tx, retries with `X-PAYMENT` header. **Plan drift:** plan assumed `wrapFetchWithPayment` which doesn't exist. |
+| 2026-04-12 | Phase 4.6: sdk/src/index.ts | ✅ | Barrel exports: IdentityClient, CommerceClient, marcPaywall, marcFetch, TESTNET, JobStatus, types. `npx tsc` clean, 12 dist files (6 .js + 6 .d.ts). Runtime verified via ESM import. |
 
 ## Gotchas learned (append after each surprise)
 
@@ -115,13 +120,17 @@ If anything in this file contradicts those docs, those docs win.
 - `stellar contract invoke` uses `--source-account` (not `--source`) as the canonical flag in 25.x. `--source` is still an alias but `--source-account` is what `--help` shows.
 - Multi-line shell commands with `\` line continuations pasted into a single-line bash wrapper sometimes introduce an empty `''` arg that stellar-cli rejects as "unexpected argument ''". Inline the command on one line when shelling it out from tool calls.
 - Read-only contract calls in 25.x print `Simulation identified as read-only. Send by rerunning with --send=yes` to stderr, then the result to stdout. The result IS returned — ignore the suggestion unless you actually need to write to ledger.
+- `@stellar/stellar-sdk` 12.3.0 exports BOTH `rpc` and `SorobanRpc` as the same object. Code written for either 12.x or 13.x namespace works. Verified at runtime: `rpc === SorobanRpc` is `true`.
+- `x402-stellar@0.2.0` does NOT export `paymentMiddleware` or `wrapFetchWithPayment` — those were hallucinated in the plan. The real API: `useFacilitator({url})` → `{verify, settle, supported, list}`, plus `encodePaymentHeader`/`decodePaymentHeader` for header encoding, and `STELLAR_TOKENS`/`STELLAR_NETWORKS` for token/network catalogs.
+- `x402-stellar` is ESM-only (no CJS main). Cannot `require()` it — must use ESM `import`. Our SDK's `"type": "module"` + `"module": "NodeNext"` in tsconfig handles this correctly.
+- Testnet USDC SAC address from x402-stellar: `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` (7 decimals).
 
 ## Open risks / things to verify during implementation
 
-- `register_stellar_asset_contract_v2` API signature may have changed in 25.x — verify in the first test that uses it
-- `token::Client::new(&env, &token_addr)` path may need to be `soroban_sdk::token::Client` — check during Task 2.2
-- `x402-stellar`'s `paymentMiddleware` signature is not yet read — read its README before Task 4.4
-- `stellar-sdk` 13.x renamed `SorobanRpc` to `rpc` — SDK code assumes `rpc.Server`; verify at first build. **WE ARE ON 12.x** per x402-stellar peer requirement — the 12.x API uses `SorobanRpc.Server`, not `rpc.Server`. Plan code in Phase 4 will need to be adjusted.
+- ~~`register_stellar_asset_contract_v2` API signature may have changed in 25.x~~ **CLOSED:** Works as documented. Used in Phase 2.2.
+- ~~`token::Client::new(&env, &token_addr)` path~~ **CLOSED:** Deprecated alias; use `token::TokenClient` directly. Fixed in Phase 2.2.
+- ~~`x402-stellar`'s `paymentMiddleware` signature~~ **CLOSED:** Function doesn't exist. x402-stellar@0.2.0 exports `useFacilitator` (verify/settle), `encodePaymentHeader`/`decodePaymentHeader`, `PaymentRequirements`/`PaymentPayload` schemas, and `STELLAR_TOKENS`/`STELLAR_NETWORKS` catalogs. We built our own Express middleware + fetch wrapper from these primitives in Tasks 4.4-4.5.
+- ~~`stellar-sdk` 12.x vs 13.x namespace~~ **CLOSED:** In 12.3.0, `rpc` and `SorobanRpc` are the **same object** (`rpc === SorobanRpc` is true). All plan imports (`rpc.Server`, `rpc.Api.isSimulationError`, etc.) work as-is. No rename needed.
 
 ## Emergency contacts (if totally stuck)
 
