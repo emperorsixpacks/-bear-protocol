@@ -8,7 +8,7 @@ const commerce = new CommerceClient(cfg);
 // In-memory caches with TTL
 let agentCache: { data: Agent[]; ts: number } = { data: [], ts: 0 };
 let jobCache: { data: Job[]; ts: number } = { data: [], ts: 0 };
-const CACHE_TTL = 30_000; // 30s
+const CACHE_TTL = 3_000; // 3s — fast refresh for demo
 
 /** Find the max existing ID via exponential probe + binary search */
 async function findMaxId(
@@ -46,7 +46,7 @@ async function fetchAll<T>(
   maxId: number,
   getter: (id: bigint) => Promise<T | null>,
 ): Promise<T[]> {
-  const BATCH = 5;
+  const BATCH = 10;
   const results: T[] = [];
   for (let start = 1; start <= maxId; start += BATCH) {
     const end = Math.min(start + BATCH - 1, maxId);

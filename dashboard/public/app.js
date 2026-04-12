@@ -726,6 +726,62 @@
     });
   }
 
+  // ── Auto-refresh polling ──
+  // Re-fetch data every 4s and re-render current view for live updates
+  var pollTimer = null;
+  var polling = false;
+
+  async function poll() {
+    if (polling) return;
+    polling = true;
+    try {
+      var route = getRoute();
+      if (route === "/") {
+        var oldStats = JSON.stringify(state.stats);
+        var oldJobs = JSON.stringify(state.jobs);
+        await Promise.all([loadStats(), loadJobs()]);
+        if (JSON.stringify(state.stats) !== oldStats || JSON.stringify(state.jobs) !== oldJobs) {
+          renderDashboard();
+        }
+      } else if (route === "/agents") {
+        var oldAgents = JSON.stringify(state.agents);
+        await loadAgents();
+        if (JSON.stringify(state.agents) !== oldAgents) {
+          renderAgents();
+        }
+      } else if (route === "/jobs") {
+        var oldJobs2 = JSON.stringify(state.jobs);
+        await loadJobs();
+        if (JSON.stringify(state.jobs) !== oldJobs2) {
+          renderJobList();
+        }
+      } else if (route === "/wallet") {
+        var oldWallets = JSON.stringify(state.wallets);
+        await loadWallets();
+        if (JSON.stringify(state.wallets) !== oldWallets) {
+          renderWallets();
+        }
+      }
+    } catch (e) {
+      // silent — don't break polling on transient errors
+    }
+    polling = false;
+  }
+
+  function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(poll, 4000);
+  }
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  // Start polling on load, restart on visibility change
+  startPolling();
+  document.addEventListener("visibilitychange", function() {
+    if (document.hidden) { stopPolling(); } else { startPolling(); poll(); }
+  });
+
   // Initial render
   navigate();
 })();
