@@ -94,12 +94,11 @@ export interface MarcConfig {
  * `scripts/deploy-testnet.sh` writes a new snapshot. Callers can spread this
  * into a `MarcConfig` and override what they need (e.g. a local RPC URL).
  *
- * `usdcToken` is left empty on purpose — Phase 5's demo deploys a fresh
- * Stellar Asset Contract at run time and injects its address, because we
- * don't yet have a persistent test USDC on testnet under our control.
+ * `usdcToken` comes from x402-stellar's `STELLAR_TOKENS["stellar-testnet"].USDC`
+ * token catalog — it's the canonical USDC SAC on testnet.
  */
 export const TESTNET = {
-  network: "testnet" as const,
+  network: "stellar-testnet" as const,
   networkPassphrase: "Test SDF Network ; September 2015",
   rpcUrl: "https://soroban-testnet.stellar.org",
   identityContract:
@@ -108,4 +107,6 @@ export const TESTNET = {
     "CD2KWU7IE74Z2QKVP3FQ67J46XHNMGIDTNKXVWE7ZNVRC7T6UH46GQXE" as Address,
   deployer:
     "GA5VIZYCUM3IUZZNQTTB7YSLJSE5WZ2EI5EGWNLTWQ234SLSH45MPKX3" as Address,
+  usdcToken:
+    "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA" as Address,
 } as const;
