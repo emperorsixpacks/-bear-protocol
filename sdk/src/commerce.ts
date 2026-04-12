@@ -104,7 +104,7 @@ export class CommerceClient {
         evaluator: native.evaluator,
         token: native.token,
         budget: BigInt(native.budget),
-        status: native.status as JobStatus,
+        status: (Array.isArray(native.status) ? native.status[0] : native.status) as JobStatus,
         description: native.description,
         deliverable: native.deliverable,
       } as Job;

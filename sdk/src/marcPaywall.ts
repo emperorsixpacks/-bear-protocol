@@ -1,111 +1,77 @@
-import {
-  useFacilitator,
-  decodePaymentHeader,
-  encodePaymentHeader,
-  type PaymentRequirements,
-  type PaymentPayload,
-  type FacilitatorConfig,
-} from "x402-stellar";
-import type { Request, Response, NextFunction } from "express";
+import { paymentMiddleware, x402ResourceServer } from "@x402/express";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+import { ExactStellarScheme } from "@x402/stellar/exact/server";
+import type { RequestHandler } from "express";
 
 /**
  * Options for the MARC paywall Express middleware.
  */
 export interface MarcPaywallOptions {
-  /** Stellar address to receive payment (G... or C...). */
+  /** Stellar address to receive payment (G...). */
   payTo: string;
-  /** Amount in stroops (1 USDC = 10_000_000 stroops). */
-  amount: string;
-  /** SAC token contract address (C...) for payment. */
-  asset: string;
-  /** Network identifier matching x402-stellar convention. */
-  network?: "stellar-testnet" | "stellar";
+  /** Human-readable price string (e.g. "$0.01"). */
+  price: string;
+  /** Network identifier. */
+  network?: "stellar:testnet" | "stellar:pubnet";
   /** Human-readable description of what's being purchased. */
   description?: string;
-  /** Facilitator service config. Uses x402-stellar default if omitted. */
+  /** MIME type of the response. */
+  mimeType?: string;
+  /** Facilitator service URL. */
   facilitatorUrl?: string;
   /** API key for the facilitator (Bearer auth). */
   facilitatorApiKey?: string;
-  /** Max seconds the payment is valid for. Default 300 (5 min). */
-  maxTimeoutSeconds?: number;
 }
 
 /**
- * Express middleware implementing the x402 payment protocol.
+ * Creates Express middleware implementing the x402 v2 payment protocol.
  *
- * Flow:
- * 1. If the request has no `X-PAYMENT` header → respond 402 with
- *    `X-PAYMENT-REQUIREMENTS` containing the JSON payment requirements.
- * 2. If the header is present → decode it, verify + settle via the
- *    x402-stellar facilitator, then call `next()` on success.
+ * Returns a middleware that protects the given route pattern.
+ * When a request arrives without payment, it returns 402 with payment requirements.
+ * When payment is provided, it verifies and settles via the facilitator.
  */
-export function marcPaywall(opts: MarcPaywallOptions) {
+export function marcPaywall(opts: MarcPaywallOptions): RequestHandler {
   const {
     payTo,
-    amount,
-    asset,
-    network = "stellar-testnet",
-    description = "",
-    facilitatorUrl,
+    price,
+    network = "stellar:testnet",
+    description = "MARC-protected API call",
+    mimeType = "application/json",
+    facilitatorUrl = "https://channels.openzeppelin.com/x402/testnet",
     facilitatorApiKey,
-    maxTimeoutSeconds = 300,
   } = opts;
 
-  const facilitatorCfg: FacilitatorConfig | undefined = facilitatorUrl
-    ? {
-        url: facilitatorUrl,
-        ...(facilitatorApiKey && {
-          createAuthHeaders: async () => {
-            const headers = { Authorization: `Bearer ${facilitatorApiKey}` };
-            return { verify: headers, settle: headers, supported: headers };
-          },
-        }),
-      }
-    : undefined;
+  const facilitatorClient = new HTTPFacilitatorClient({
+    url: facilitatorUrl,
+    ...(facilitatorApiKey && {
+      createAuthHeaders: async () => {
+        const headers = { Authorization: `Bearer ${facilitatorApiKey}` };
+        return { verify: headers, settle: headers, supported: headers };
+      },
+    }),
+  });
 
-  const { verify, settle } = useFacilitator(facilitatorCfg);
-
-  const requirements: PaymentRequirements = {
-    scheme: "exact",
+  const resourceServer = new x402ResourceServer(facilitatorClient).register(
     network,
-    maxAmountRequired: amount,
-    resource: "",
-    description,
-    mimeType: "application/json",
-    payTo,
-    maxTimeoutSeconds,
-    asset,
-    outputSchema: null,
-    extra: null,
+    new ExactStellarScheme(),
+  );
+
+  // paymentMiddleware expects a route-config map like { "GET /path": { ... } }
+  // We use a wildcard pattern that matches any method + path.
+  const routeConfig = {
+    "*": {
+      accepts: [
+        {
+          scheme: "exact" as const,
+          price,
+          network,
+          payTo,
+        },
+      ],
+      description,
+      mimeType,
+    },
   };
 
-  return async (req: Request, res: Response, next: NextFunction) => {
-    // Stamp the resource path so the facilitator can match it.
-    const reqs: PaymentRequirements = { ...requirements, resource: req.originalUrl };
-
-    const paymentHeader = req.headers["x-payment"] as string | undefined;
-    if (!paymentHeader) {
-      res
-        .status(402)
-        .set("X-PAYMENT-REQUIREMENTS", encodePaymentHeader(reqs))
-        .json({ error: "Payment Required", requirements: reqs });
-      return;
-    }
-
-    try {
-      const payload: PaymentPayload = decodePaymentHeader(paymentHeader);
-      const verifyResult = await verify(payload, reqs);
-      if (!verifyResult.isValid) {
-        res.status(402).json({ error: "Payment verification failed" });
-        return;
-      }
-      await settle(payload, reqs);
-      next();
-    } catch (err) {
-      res.status(402).json({
-        error: "Payment processing failed",
-        details: err instanceof Error ? err.message : String(err),
-      });
-    }
-  };
+  return paymentMiddleware(routeConfig, resourceServer) as RequestHandler;
 }

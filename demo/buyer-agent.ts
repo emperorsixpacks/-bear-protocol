@@ -53,13 +53,16 @@ console.log(`[buyer] job created: id=${jobId} budget=${budget}`);
 const paidFetch = marcFetch({
   signer: buyer,
   rpcUrl: cfg.rpcUrl,
-  networkPassphrase: cfg.networkPassphrase,
 });
 
 for (let i = 1; i <= NUM_CALLS; i++) {
-  const res = await paidFetch(`http://localhost:${sellerPort}/api/work`);
-  const data = await res.json();
-  console.log(`[buyer] x402 call ${i}/${NUM_CALLS}: ${JSON.stringify(data)}`);
+  try {
+    const res = await paidFetch(`http://localhost:${sellerPort}/api/work`);
+    const data = await res.json();
+    console.log(`[buyer] x402 call ${i}/${NUM_CALLS}: status=${res.status} ${JSON.stringify(data)}`);
+  } catch (err) {
+    console.error(`[buyer] x402 call ${i}/${NUM_CALLS} error:`, err instanceof Error ? err.message : err);
+  }
 }
 
 // --- Step 4: Submit deliverable on behalf of seller (demo shortcut) ---

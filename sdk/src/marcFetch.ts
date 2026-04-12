@@ -1,18 +1,11 @@
+import { Keypair } from "@stellar/stellar-sdk";
+import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
+import { ExactStellarScheme } from "@x402/stellar/exact/client";
 import {
-  Keypair,
-  TransactionBuilder,
-  Networks,
-  Operation,
-  BASE_FEE,
-  nativeToScVal,
-  rpc,
-} from "@stellar/stellar-sdk";
-import {
-  decodePaymentHeader,
-  encodePaymentHeader,
-  type PaymentRequirements,
-  type PaymentPayload,
-} from "x402-stellar";
+  createEd25519Signer,
+  STELLAR_TESTNET_CAIP2,
+  STELLAR_PUBNET_CAIP2,
+} from "@x402/stellar";
 
 /**
  * Configuration for the auto-paying fetch wrapper.
@@ -22,98 +15,34 @@ export interface MarcFetchOptions {
   signer: Keypair;
   /** Soroban RPC URL for submitting payments. */
   rpcUrl?: string;
-  /** Network passphrase. Default: testnet. */
-  networkPassphrase?: string;
+  /** Network: testnet or pubnet. Default: testnet. */
+  network?: "testnet" | "pubnet";
 }
 
 /**
  * Returns a `fetch`-compatible function that automatically handles HTTP 402
  * responses by building, signing, and submitting a Stellar payment, then
- * retrying the original request with the `X-PAYMENT` header.
+ * retrying the original request with the payment headers.
  *
- * Builds a Soroban invokeHostFunction transaction that calls the SAC
- * `transfer(from, to, amount)` method — the format the x402 facilitator
- * expects for on-chain settlement.
- *
- * This is the buyer/agent side of the x402 protocol.
+ * Uses the x402 v2 protocol with @x402/fetch and @x402/stellar.
  */
 export function marcFetch(opts: MarcFetchOptions) {
   const {
     signer,
-    rpcUrl = "https://soroban-testnet.stellar.org",
-    networkPassphrase = Networks.TESTNET,
+    rpcUrl,
+    network = "testnet",
   } = opts;
 
-  const server = new rpc.Server(rpcUrl, {
-    allowHttp: rpcUrl.startsWith("http://"),
-  });
+  const caip2 =
+    network === "pubnet" ? STELLAR_PUBNET_CAIP2 : STELLAR_TESTNET_CAIP2;
 
-  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    // First attempt — may return 402.
-    const res = await fetch(input, init);
-    if (res.status !== 402) return res;
+  const stellarSigner = createEd25519Signer(signer.secret(), caip2);
 
-    // Extract payment requirements from the 402 response.
-    const reqHeader = res.headers.get("x-payment-requirements");
-    if (!reqHeader) throw new Error("402 response missing X-PAYMENT-REQUIREMENTS header");
-    const requirements: PaymentRequirements = decodePaymentHeader(reqHeader);
+  const rpcConfig = rpcUrl ? { url: rpcUrl } : undefined;
+  const stellarScheme = new ExactStellarScheme(stellarSigner, rpcConfig);
 
-    // Build a Soroban SAC transfer invocation.
-    // The facilitator expects an invokeHostFunction tx calling the token
-    // contract's `transfer(from, to, amount)` — NOT a classic payment op.
-    let preparedTx;
-    try {
-      const account = await server.getAccount(signer.publicKey());
-      const amount = requirements.maxAmountRequired;
+  const client = new x402Client();
+  client.register(caip2, stellarScheme);
 
-      const tx = new TransactionBuilder(account, {
-        fee: BASE_FEE,
-        networkPassphrase,
-      })
-        .addOperation(
-          Operation.invokeContractFunction({
-            contract: requirements.asset,
-            function: "transfer",
-            args: [
-              nativeToScVal(signer.publicKey(), { type: "address" }),
-              nativeToScVal(requirements.payTo, { type: "address" }),
-              nativeToScVal(BigInt(amount), { type: "i128" }),
-            ],
-          }),
-        )
-        .setTimeout(30)
-        .build();
-
-      // Simulate to populate Soroban auth entries + resource fees, then sign.
-      preparedTx = await server.prepareTransaction(tx);
-      preparedTx.sign(signer);
-    } catch (err) {
-      // Simulation failures (e.g. insufficient token balance) should not
-      // crash the caller — return the original 402 so they can handle it.
-      return res;
-    }
-
-    const nonce = Math.random().toString(36).slice(2);
-    const payload: PaymentPayload = {
-      x402Version: 1,
-      scheme: "exact",
-      network: requirements.network,
-      payload: {
-        signedTxXdr: preparedTx.toXDR(),
-        sourceAccount: signer.publicKey(),
-        amount: requirements.maxAmountRequired,
-        destination: requirements.payTo,
-        asset: requirements.asset,
-        validUntilLedger: 0,
-        nonce,
-      },
-    };
-
-    // Retry the original request with the payment header.
-    const retryInit: RequestInit = { ...init };
-    retryInit.headers = new Headers(init?.headers);
-    retryInit.headers.set("X-PAYMENT", encodePaymentHeader(payload));
-
-    return fetch(input, retryInit);
-  };
+  return wrapFetchWithPayment(fetch, client);
 }

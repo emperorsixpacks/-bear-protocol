@@ -33,19 +33,15 @@ if (!agentId) {
   console.log(`[seller] already registered as agent ${agentId}`);
 }
 
-// --- Express server with x402 paywall ---
+// --- Express server with x402 v2 paywall ---
 const app = express();
-
-// x402 paywall must use real USDC (SAC) for OZ facilitator compatibility.
-const X402_USDC = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
 
 app.use(
   "/api/work",
   marcPaywall({
     payTo: seller.publicKey(),
-    amount: "100000", // 0.01 USDC (7 decimals)
-    asset: X402_USDC,
-    network: "stellar-testnet",
+    price: "$0.01",
+    network: "stellar:testnet",
     description: "One MARC-protected API call",
     facilitatorUrl: process.env.X402_FACILITATOR_URL,
     facilitatorApiKey: process.env.X402_FACILITATOR_API_KEY,

@@ -70,20 +70,22 @@ export class IdentityClient {
   }
 
   /** Update an agent's metadata URI (owner-only). */
-  async updateUri(owner: Keypair, uri: string): Promise<void> {
+  async updateUri(owner: Keypair, id: bigint, uri: string): Promise<void> {
     const op = this.contract.call(
       "update_uri",
       new Address(owner.publicKey()).toScVal(),
+      nativeToScVal(id, { type: "u64" }),
       nativeToScVal(uri, { type: "string" }),
     );
     await this.invoke(owner, op, () => undefined);
   }
 
   /** Permanently remove an agent (owner-only). */
-  async deregister(owner: Keypair): Promise<void> {
+  async deregister(owner: Keypair, id: bigint): Promise<void> {
     const op = this.contract.call(
       "deregister",
       new Address(owner.publicKey()).toScVal(),
+      nativeToScVal(id, { type: "u64" }),
     );
     await this.invoke(owner, op, () => undefined);
   }
