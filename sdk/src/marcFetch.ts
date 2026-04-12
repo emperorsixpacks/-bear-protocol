@@ -61,30 +61,37 @@ export function marcFetch(opts: MarcFetchOptions) {
     // Build a Soroban SAC transfer invocation.
     // The facilitator expects an invokeHostFunction tx calling the token
     // contract's `transfer(from, to, amount)` — NOT a classic payment op.
-    const account = await server.getAccount(signer.publicKey());
-    const amount = requirements.maxAmountRequired;
+    let preparedTx;
+    try {
+      const account = await server.getAccount(signer.publicKey());
+      const amount = requirements.maxAmountRequired;
 
-    const tx = new TransactionBuilder(account, {
-      fee: BASE_FEE,
-      networkPassphrase,
-    })
-      .addOperation(
-        Operation.invokeContractFunction({
-          contract: requirements.asset,
-          function: "transfer",
-          args: [
-            nativeToScVal(signer.publicKey(), { type: "address" }),
-            nativeToScVal(requirements.payTo, { type: "address" }),
-            nativeToScVal(BigInt(amount), { type: "i128" }),
-          ],
-        }),
-      )
-      .setTimeout(30)
-      .build();
+      const tx = new TransactionBuilder(account, {
+        fee: BASE_FEE,
+        networkPassphrase,
+      })
+        .addOperation(
+          Operation.invokeContractFunction({
+            contract: requirements.asset,
+            function: "transfer",
+            args: [
+              nativeToScVal(signer.publicKey(), { type: "address" }),
+              nativeToScVal(requirements.payTo, { type: "address" }),
+              nativeToScVal(BigInt(amount), { type: "i128" }),
+            ],
+          }),
+        )
+        .setTimeout(30)
+        .build();
 
-    // Simulate to populate Soroban auth entries + resource fees, then sign.
-    const preparedTx = await server.prepareTransaction(tx);
-    preparedTx.sign(signer);
+      // Simulate to populate Soroban auth entries + resource fees, then sign.
+      preparedTx = await server.prepareTransaction(tx);
+      preparedTx.sign(signer);
+    } catch (err) {
+      // Simulation failures (e.g. insufficient token balance) should not
+      // crash the caller — return the original 402 so they can handle it.
+      return res;
+    }
 
     const nonce = Math.random().toString(36).slice(2);
     const payload: PaymentPayload = {
@@ -94,7 +101,7 @@ export function marcFetch(opts: MarcFetchOptions) {
       payload: {
         signedTxXdr: preparedTx.toXDR(),
         sourceAccount: signer.publicKey(),
-        amount,
+        amount: requirements.maxAmountRequired,
         destination: requirements.payTo,
         asset: requirements.asset,
         validUntilLedger: 0,
