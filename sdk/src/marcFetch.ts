@@ -3,8 +3,8 @@ import {
   TransactionBuilder,
   Networks,
   Operation,
-  Asset,
   BASE_FEE,
+  nativeToScVal,
   rpc,
 } from "@stellar/stellar-sdk";
 import {
@@ -31,6 +31,10 @@ export interface MarcFetchOptions {
  * responses by building, signing, and submitting a Stellar payment, then
  * retrying the original request with the `X-PAYMENT` header.
  *
+ * Builds a Soroban invokeHostFunction transaction that calls the SAC
+ * `transfer(from, to, amount)` method — the format the x402 facilitator
+ * expects for on-chain settlement.
+ *
  * This is the buyer/agent side of the x402 protocol.
  */
 export function marcFetch(opts: MarcFetchOptions) {
@@ -54,26 +58,33 @@ export function marcFetch(opts: MarcFetchOptions) {
     if (!reqHeader) throw new Error("402 response missing X-PAYMENT-REQUIREMENTS header");
     const requirements: PaymentRequirements = decodePaymentHeader(reqHeader);
 
-    // Build and sign a Stellar payment transaction.
+    // Build a Soroban SAC transfer invocation.
+    // The facilitator expects an invokeHostFunction tx calling the token
+    // contract's `transfer(from, to, amount)` — NOT a classic payment op.
     const account = await server.getAccount(signer.publicKey());
     const amount = requirements.maxAmountRequired;
 
-    const txBuilder = new TransactionBuilder(account, {
+    const tx = new TransactionBuilder(account, {
       fee: BASE_FEE,
       networkPassphrase,
-    });
+    })
+      .addOperation(
+        Operation.invokeContractFunction({
+          contract: requirements.asset,
+          function: "transfer",
+          args: [
+            nativeToScVal(signer.publicKey(), { type: "address" }),
+            nativeToScVal(requirements.payTo, { type: "address" }),
+            nativeToScVal(BigInt(amount), { type: "i128" }),
+          ],
+        }),
+      )
+      .setTimeout(30)
+      .build();
 
-    // Use native XLM or SAC-based payment depending on asset.
-    txBuilder.addOperation(
-      Operation.payment({
-        destination: requirements.payTo,
-        asset: Asset.native(), // Simplified: for USDC, the facilitator handles SAC routing.
-        amount,
-      }),
-    );
-
-    const tx = txBuilder.setTimeout(30).build();
-    tx.sign(signer);
+    // Simulate to populate Soroban auth entries + resource fees, then sign.
+    const preparedTx = await server.prepareTransaction(tx);
+    preparedTx.sign(signer);
 
     const nonce = Math.random().toString(36).slice(2);
     const payload: PaymentPayload = {
@@ -81,12 +92,12 @@ export function marcFetch(opts: MarcFetchOptions) {
       scheme: "exact",
       network: requirements.network,
       payload: {
-        signedTxXdr: tx.toXDR(),
+        signedTxXdr: preparedTx.toXDR(),
         sourceAccount: signer.publicKey(),
         amount,
         destination: requirements.payTo,
         asset: requirements.asset,
-        validUntilLedger: 0, // Facilitator resolves this from the tx envelope.
+        validUntilLedger: 0,
         nonce,
       },
     };
