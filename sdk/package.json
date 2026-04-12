@@ -14,7 +14,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "^12.3.0",
+    "@stellar/stellar-sdk": "^14.6.1",
     "x402-stellar": "^0.2.0"
   },
   "peerDependencies": {

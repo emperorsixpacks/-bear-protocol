@@ -14,7 +14,7 @@ function log(msg: string) {
   console.log(`[lifecycle] ${new Date().toISOString()} ${msg}`);
 }
 
-function waitForOutput(proc: ChildProcess, pattern: string, timeoutMs = 30_000): Promise<void> {
+function waitForOutput(proc: ChildProcess, pattern: string, timeoutMs = 90_000): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Timeout waiting for "${pattern}"`)), timeoutMs);
     const onData = (chunk: Buffer) => {
