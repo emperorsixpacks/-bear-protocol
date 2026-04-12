@@ -131,6 +131,8 @@ If anything in this file contradicts those docs, those docs win.
 - SAC-wrapped classic assets: `stellar tx new payment --amount N` gives N units in the SAC `balance()` call (1:1 mapping, no decimal scaling). A classic issue of 1000 = 1000 SAC units, not 10B stroops.
 - To use a custom token in `agentic_commerce`: (1) `stellar tx new change-trust` for each account, (2) `stellar tx new payment` from issuer to each account, (3) `stellar contract asset deploy` to get the SAC contract address, (4) use that SAC address as the `token` param.
 - Soroban contracts don't need classic trustlines to receive SAC tokens — the SAC tracks Soroban balances internally.
+- x402-stellar's default facilitator URL (`facilitator.stellar-x402.org`) is unreachable. `facilitator.x402.org` is also dead. The working facilitator is **OpenZeppelin's hosted service** at `https://channels.openzeppelin.com/x402/testnet`. Requires Bearer API key auth — generate a key via `GET https://channels.openzeppelin.com/testnet/gen`. Pass `createAuthHeaders` in `FacilitatorConfig` to add the key to verify/settle/supported calls.
+- The OZ facilitator only settles real USDC, not custom SAC tokens like our MUSD. x402 micropayments will return "Payment verification failed" with MUSD — the protocol flow works (402 → payment → retry) but settlement fails. This is fine for demo purposes.
 
 ## Open risks / things to verify during implementation
 
