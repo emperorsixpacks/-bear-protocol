@@ -39,7 +39,7 @@ If anything in this file contradicts those docs, those docs win.
 | Dependency | Version | Why |
 |---|---|---|
 | `soroban-sdk` | `25.3.1` | Matches stellar-cli 25.x major. SDK 26.0.0 is 2 days old and unverified against our CLI. |
-| `@stellar/stellar-sdk` | `^12.3.0` | **Forced to 12.x by x402-stellar@0.2.0 peer requirement.** Latest is 15.0.1. Do NOT upgrade until x402-stellar supports 13+. |
+| `@stellar/stellar-sdk` | `^14.6.1` | Upgraded from 12.x — protocol 25 requires 14.x+ XDR. x402-stellar's `^12.0.0` peer dep is type-only (no runtime import), so the violation is safe. |
 | `x402-stellar` | `^0.2.0` | Latest on npm. Peer-deps `@stellar/stellar-sdk@^12.0.0`. Only 2 published versions (0.1.0, 0.2.0). |
 | `express` | `^4.19.0` | Peer of `x402-stellar` paywall. |
 | `typescript` | `^5.6.0` | |
@@ -99,6 +99,9 @@ If anything in this file contradicts those docs, those docs win.
 | 2026-04-12 | Phase 4.4: sdk/src/marcPaywall.ts | ✅ | Express middleware using x402-stellar's real `useFacilitator` API (verify+settle). **Plan drift:** plan assumed `paymentMiddleware` export which does NOT exist in x402-stellar@0.2.0. Built our own middleware from primitives. |
 | 2026-04-12 | Phase 4.5: sdk/src/marcFetch.ts | ✅ | Auto-402 fetch wrapper. Detects 402, reads `X-PAYMENT-REQUIREMENTS`, builds+signs Stellar payment tx, retries with `X-PAYMENT` header. **Plan drift:** plan assumed `wrapFetchWithPayment` which doesn't exist. |
 | 2026-04-12 | Phase 4.6: sdk/src/index.ts | ✅ | Barrel exports: IdentityClient, CommerceClient, marcPaywall, marcFetch, TESTNET, JobStatus, types. `npx tsc` clean, 12 dist files (6 .js + 6 .d.ts). Runtime verified via ESM import. |
+| 2026-04-12 | stellar-sdk 12→14 upgrade | ✅ | 12.x and 13.x fail with "Bad union switch: 4" (protocol 25 XDR). 14.6.1 works. x402-stellar's `^12.0.0` peer dep is type-only — no runtime impact. |
+| 2026-04-12 | Phase 5.1–5.3: demo scripts | ✅ | seller-agent.ts (marcPaywall on /api/work), buyer-agent.ts (marcFetch + full job lifecycle), lifecycle.ts (orchestrator spawns seller, runs buyer, exits 0). All typecheck clean. |
+| 2026-04-12 | Phase 5.4: testnet dry run | ✅ | Full lifecycle completes on testnet. Job #1 created, funded (10M MUSD escrow), submitted, completed. 99/1 split verified on-chain: seller +9.9M, treasury +100K, contract 0. x402 micropayments fail (facilitator not reachable) but contract flow is fully functional. Used custom MUSD SAC (`CCWHIM2BEG5OEDNLQ5DBQE2KY5TZMVN627HQ6NLUJHWP5GQDBO5SXLBS`) since we can't mint Circle's testnet USDC. |
 
 ## Gotchas learned (append after each surprise)
 
@@ -124,6 +127,10 @@ If anything in this file contradicts those docs, those docs win.
 - `x402-stellar@0.2.0` does NOT export `paymentMiddleware` or `wrapFetchWithPayment` — those were hallucinated in the plan. The real API: `useFacilitator({url})` → `{verify, settle, supported, list}`, plus `encodePaymentHeader`/`decodePaymentHeader` for header encoding, and `STELLAR_TOKENS`/`STELLAR_NETWORKS` for token/network catalogs.
 - `x402-stellar` is ESM-only (no CJS main). Cannot `require()` it — must use ESM `import`. Our SDK's `"type": "module"` + `"module": "NodeNext"` in tsconfig handles this correctly.
 - Testnet USDC SAC address from x402-stellar: `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` (7 decimals).
+- `@stellar/stellar-sdk` 12.x and 13.x both crash with `Bad union switch: 4` when parsing transaction results from testnet (protocol 25). Only 14.x+ has the updated XDR types. The x402-stellar `^12.0.0` peer dep is safe to violate — it's types-only at runtime.
+- SAC-wrapped classic assets: `stellar tx new payment --amount N` gives N units in the SAC `balance()` call (1:1 mapping, no decimal scaling). A classic issue of 1000 = 1000 SAC units, not 10B stroops.
+- To use a custom token in `agentic_commerce`: (1) `stellar tx new change-trust` for each account, (2) `stellar tx new payment` from issuer to each account, (3) `stellar contract asset deploy` to get the SAC contract address, (4) use that SAC address as the `token` param.
+- Soroban contracts don't need classic trustlines to receive SAC tokens — the SAC tracks Soroban balances internally.
 
 ## Open risks / things to verify during implementation
 

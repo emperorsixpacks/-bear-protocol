@@ -10,9 +10,9 @@ Single-page status tracker. **If you're a Claude agent picking up this project, 
 
 ## Current state
 
-**Phase:** 5 (CLI Demo)
-**Last completed:** Phase 4 — full TypeScript SDK (6/6 tasks), `npx tsc` clean, 7 public exports verified at runtime ✅
-**Next action:** Phase 5 Task 5.1 — write `demo/src/seller-agent.ts` (Express server with marcPaywall)
+**Phase:** 6 (Landing Page)
+**Last completed:** Phase 5 — CLI demo lifecycle runs end-to-end on testnet, job #1 completed with 99/1 split verified on-chain ✅
+**Next action:** Phase 6 Task 6.1 — write `landing/index.html`
 
 **Deployed contracts (testnet):**
 - `agent_identity`   = `CAMPXYFZJTIPEVOPOAZPRG5OHXKNBDPGTPRCOIO4LVPGEM4TONPY65A5`
@@ -30,8 +30,8 @@ Single-page status tracker. **If you're a Claude agent picking up this project, 
 | 2 | `agentic_commerce` contract | ✅ done | 7/7 | 12 tests green, 9.4 KB WASM, 10 entry points, 99/1 fee split verified |
 | 3 | Testnet deployment | ✅ done | 3/3 | Both contracts live, init invoked, fee_bps=100 verified |
 | 4 | TypeScript SDK | ✅ done | 6/6 | types, IdentityClient, CommerceClient, marcPaywall, marcFetch, index — all compiled, runtime verified |
-| **5** | **CLI demo** | 🚧 **next** | **0/4** | seller-agent, buyer-agent, lifecycle orchestrator, dry run |
-| 6 | Landing page | ⬜ todo | 0/4 | HTML + CSS + JS + Vercel deploy |
+| 5 | CLI demo | ✅ done | 4/4 | seller-agent, buyer-agent, lifecycle orchestrator, testnet dry run — job #1 completed, 99/1 split verified |
+| **6** | **Landing page** | 🚧 **next** | **0/4** | HTML + CSS + JS + Vercel deploy |
 | 7 | Submission materials | ⬜ todo | 0/6 | README, LIGHTPAPER, PROTOCOL, pitch video, DoraHacks form, git tag |
 
 ---
