@@ -25,6 +25,7 @@ export class CommerceClient {
   constructor(private cfg: MarcConfig) {
     this.server = new rpc.Server(cfg.rpcUrl, {
       allowHttp: cfg.rpcUrl.startsWith("http://"),
+      timeout: 15000,
     });
     this.contract = new Contract(cfg.commerceContract);
   }
@@ -161,7 +162,12 @@ export class CommerceClient {
       await new Promise((r) => setTimeout(r, 1000));
       getResp = await this.server.getTransaction(sent.hash);
     }
-    if (getResp.status !== "SUCCESS") throw new Error(`tx failed: ${getResp.status}`);
+    if (getResp.status !== "SUCCESS") {
+      const failed = getResp as rpc.Api.GetFailedTransactionResponse;
+      const detail = failed.resultXdr?.result()?.switch()?.name ?? getResp.status;
+      throw new Error(`tx failed: ${detail}`);
+    }
+    this.cfg.onTx?.(sent.hash, "commerce");
     return decode(getResp.returnValue!);
   }
 
@@ -175,10 +181,18 @@ export class CommerceClient {
       .addOperation(op)
       .setTimeout(30)
       .build();
-    const sim = await this.server.simulateTransaction(tx);
-    if (rpc.Api.isSimulationError(sim)) throw new Error(sim.error);
-    const result = (sim as rpc.Api.SimulateTransactionSuccessResponse).result;
-    if (!result) throw new Error("no simulation result");
-    return decode(result.retval);
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const sim = await this.server.simulateTransaction(tx);
+        if (rpc.Api.isSimulationError(sim)) throw new Error(sim.error);
+        const result = (sim as rpc.Api.SimulateTransactionSuccessResponse).result;
+        if (!result) throw new Error("no simulation result");
+        return decode(result.retval);
+      } catch (err) {
+        if (attempt === 3) throw err;
+        await new Promise((r) => setTimeout(r, 2000 * attempt));
+      }
+    }
+    throw new Error("unreachable");
   }
 }

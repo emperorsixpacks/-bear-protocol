@@ -85,6 +85,8 @@ export interface MarcConfig {
   commerceContract: Address;
   /** USDC (or test SAC) token address used as the escrow currency. */
   usdcToken: Address;
+  /** Optional callback fired after every successful on-chain tx. */
+  onTx?: (hash: string, method: string) => void;
 }
 
 /**
