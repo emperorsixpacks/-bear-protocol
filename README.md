@@ -22,80 +22,37 @@ MARC is a three-layer protocol that gives AI agents everything they need to tran
 | **Agentic Commerce** | Escrow-based job marketplace. Lock funds → deliver → get paid. 1% fee. | ERC-8183 |
 | **x402 Micropayments** | HTTP 402 pay-per-call APIs via Stellar payment rails. | x402 + MPP |
 
-## What We Built (48 hours)
+## What We Built
 
 - 2 Soroban smart contracts (Rust → WASM, deployed on testnet)
 - 19 contract unit tests (7 identity + 12 commerce)
 - TypeScript SDK wrapping both contracts + x402 middleware
 - Interactive dashboard (register agents, create jobs, full escrow lifecycle)
-- CLI demo scripts for end-to-end verification
-- Landing page with protocol documentation
-
----
-
-## Demo
-
-> **No wallet extension needed.** The dashboard uses pre-loaded testnet keypairs so judges can interact with the protocol immediately.
-
-```
-http://localhost:3000        → Landing page
-http://localhost:3000/app    → Interactive dashboard
-```
-
-**Try the full lifecycle:**
-1. Register an agent (on-chain identity in ~6s)
-2. Create a job (USDC locked in escrow)
-3. Submit deliverable (provider submits work)
-4. Complete job (99% to provider, 1% fee to treasury)
-5. Watch balances update in real time
-
-<!-- TODO: Add demo video link or screenshots -->
+- Multi-agent TUI simulation (4 sellers + 5 buyers running concurrently)
+- Real AI agent marketplace — 4 Groq-powered seller agents doing real work, paid in USDC
 
 ---
 
 ## How It Works
 
 ```
-  Client                    Contract                   Provider
+  Buyer                     Contract                   Seller (AI Agent)
     │                          │                          │
     │  1. create_job(budget)   │                          │
     │ ────────────────────────>│  USDC locked in escrow   │
     │                          │                          │
-    │                          │  2. submit(deliverable)  │
+    │  2. POST /job to seller  │                          │
+    │ ────────────────────────────────────────────────────>│
+    │                          │                          │ (Groq LLM does work)
+    │                          │  3. submit(deliverable)  │
     │                          │<─────────────────────────│
     │                          │                          │
-    │  3. complete()           │                          │
-    │ ────────────────────────>│  99% → Provider          │
+    │  4. complete()           │                          │
+    │ ────────────────────────>│  99% → Seller            │
     │                          │   1% → Treasury          │
-    │                          │                          │
 ```
 
 **Job States:** `Funded` → `Submitted` → `Completed` (or `Cancelled` from `Funded`)
-
----
-
-## x402 + MPP Integration
-
-MARC sits on top of Stellar's x402 and Machine-Payable Pages standards:
-
-**Server (paywall):** Any agent can monetize its API with one line of middleware:
-```typescript
-import { marcPaywall } from "marc-stellar-sdk";
-
-app.use("/api/work", marcPaywall({ price: 1_000_000, token: "USDC" }));
-```
-
-**Client (auto-pay):** Agents automatically detect 402 responses, pay, and retry:
-```typescript
-import { marcFetch } from "marc-stellar-sdk";
-
-const res = await marcFetch("https://agent.example/api/work", {
-  method: "POST",
-  signer: keypair,
-});
-```
-
-This implements the full x402 flow: `402 Payment Required` → read `X-PAYMENT-REQUIREMENTS` → sign Stellar tx → retry with `X-PAYMENT` header → access granted.
 
 ---
 
@@ -107,34 +64,34 @@ This implements the full x402 flow: `402 Payment Required` → read `X-PAYMENT-R
 | Agentic Commerce | `CD2KWU7IE74Z2QKVP3FQ67J46XHNMGIDTNKXVWE7ZNVRC7T6UH46GQXE` |
 | Network | Stellar Testnet |
 
-Verify live: `stellar contract invoke --id CAMPXYFZJTIPEVOPOAZPRG5OHXKNBDPGTPRCOIO4LVPGEM4TONPY65A5 --network testnet -- version`
-
 ---
 
 ## Architecture
 
 ```
-marc-stellar/
+bear-protocol/
 ├── contracts/
-│   ├── agent-identity/       # Soroban contract — agent registry (4.2 KB WASM)
-│   └── agentic-commerce/     # Soroban contract — job escrow (9.4 KB WASM)
-├── sdk/                      # TypeScript SDK wrapping both contracts
+│   ├── agent-identity/       # Soroban contract — agent registry
+│   └── agentic-commerce/     # Soroban contract — job escrow
+├── sdk/                      # TypeScript SDK
 │   └── src/
 │       ├── identity.ts       # IdentityClient
 │       ├── commerce.ts       # CommerceClient
 │       ├── marcPaywall.ts    # Express x402 middleware
 │       ├── marcFetch.ts      # Auto-paying fetch wrapper
 │       └── types.ts          # Shared types + TESTNET config
+├── agents/                   # AI agent marketplace
+│   ├── buyer/                # Buyer TUI — browse agents, hire, pay
+│   ├── seller-webbuilder/    # Builds HTML websites (Groq)
+│   ├── seller-copywriter/    # Writes website copy (Groq)
+│   ├── seller-namer/         # Generates brand names (Groq)
+│   ├── seller-researcher/    # Writes research reports (Groq)
+│   └── registry/             # Local agent manifest server
 ├── demo/
-│   ├── seller-agent.ts       # x402 paywall server
-│   ├── buyer-agent.ts        # Job lifecycle + micropayments
-│   └── lifecycle.ts          # Full end-to-end orchestrator
-├── dashboard/
-│   ├── server.ts             # Express API + static serving
-│   ├── lib/config.ts         # Keypair + contract config
-│   ├── lib/discovery.ts      # Sequential ID scanner for on-chain data
-│   └── public/               # Dashboard SPA (HTML/CSS/JS)
-├── landing/                  # Marketing landing page
+│   ├── tui.ts                # Multi-agent TUI simulation
+│   ├── buyer-agent.ts        # Buyer lifecycle script
+│   └── seller-agent.ts       # Seller x402 paywall server
+├── dashboard/                # Web dashboard (Express + SPA)
 └── scripts/
     ├── build.sh              # Build contracts + SDK
     └── deploy-testnet.sh     # Deploy to Stellar testnet
@@ -146,53 +103,80 @@ marc-stellar/
 
 ### Prerequisites
 
-- [Rust](https://rustup.rs/) 1.92+
-- [stellar CLI](https://developers.stellar.org/docs/tools/developer-tools/cli/install-cli) 25.x
 - Node.js 20+
+- Rust 1.92+ (for contract builds only)
+- A Groq API key (free at [console.groq.com](https://console.groq.com))
+- A funded Stellar testnet keypair
 
-### 1. Clone & build
+### 1. Clone & build SDK
 
 ```bash
 git clone https://github.com/mmhhmm/marc-stellar.git
 cd marc-stellar
-
-# Build Soroban contracts
-./scripts/build.sh
-
-# Build SDK
 cd sdk && npm install && npm run build && cd ..
 ```
 
 ### 2. Set up environment
 
 ```bash
-# Copy the example env (fill in BUYER_SECRET and SELLER_SECRET with funded testnet keypairs)
 cp demo/.env.example demo/.env
+```
 
-# Generate funded testnet accounts if needed:
+Fill in `demo/.env`:
+```
+BUYER_SECRET=S...          # funded testnet keypair
+SELLER_SECRET_1=S...       # seller-webbuilder keypair
+SELLER_SECRET_2=S...       # seller-copywriter keypair
+SELLER_SECRET_3=S...       # seller-namer keypair
+SELLER_SECRET_4=S...       # seller-researcher keypair
+GROQ_API_KEY=gsk_...       # from console.groq.com
+X402_FACILITATOR_API_KEY=  # from: curl https://channels.openzeppelin.com/testnet/gen
+```
+
+Generate funded testnet keypairs:
+```bash
 stellar keys generate buyer --network testnet --fund
-stellar keys generate seller --network testnet --fund
+stellar keys show buyer  # copy the S... secret
 ```
 
-### 3. Run the dashboard
+Fund buyer with USDC at [faucet.circle.com](https://faucet.circle.com) → Stellar Testnet.
+
+### 3. Start the agent marketplace
 
 ```bash
-cd dashboard
-npm install
-ln -s ../demo/.env .env
-npx tsx server.ts
+./start-agents.sh
 ```
 
-Open [http://localhost:3000](http://localhost:3000) for the landing page, or [http://localhost:3000/app](http://localhost:3000/app) for the interactive dashboard.
+This starts:
+- Agent registry on `:4500`
+- 4 seller agents on `:4501–4504`
 
-### 4. Run the CLI demo (optional)
+### 4. Run the buyer TUI
 
 ```bash
-cd demo && npm install
-
-# Full lifecycle: register agents → create job → submit → complete → verify 99/1 split
-npm run lifecycle
+cd agents/buyer && npm start
 ```
+
+- `↑↓` to browse agents
+- `Tab` to focus task input
+- Type your task, press `Enter` to hire
+- Press `n` to start a new task
+
+### 5. Run the dashboard
+
+```bash
+cd dashboard && npm install && npx tsx server.ts
+```
+
+Open [http://localhost:3000/app](http://localhost:3000/app) to see all on-chain agents and jobs.
+
+### 6. Run the TUI simulation (optional)
+
+```bash
+cd demo && npm run tui
+```
+
+Runs 4 sellers + 5 buyers concurrently, showing live balances and activity.
 
 ---
 
@@ -201,26 +185,56 @@ npm run lifecycle
 ```typescript
 import { IdentityClient, CommerceClient, TESTNET } from "marc-stellar-sdk";
 
-// Register an agent
-const identity = new IdentityClient(TESTNET);
+const cfg = {
+  ...TESTNET,
+  onTx: (hash) => console.log(`tx: https://stellar.expert/explorer/testnet/tx/${hash}`),
+};
+
+// Register an agent on-chain
+const identity = new IdentityClient(cfg);
 const agentId = await identity.register(keypair, "ipfs://agent-metadata.json");
 
-// Create an escrow job
-const commerce = new CommerceClient(TESTNET);
+// Browse registered agents
+const agents = await identity.listAgents();
+
+// Create an escrow job (locks USDC)
+const commerce = new CommerceClient(cfg);
 const jobId = await commerce.createJob(
   clientKeypair,
   providerAddress,
   evaluatorAddress,
   TESTNET.usdcToken,
   10_000_000n, // 1 USDC (7 decimals)
-  "Generate quarterly report"
+  "Build a landing page for Brew & Co coffee shop"
 );
 
-// Provider submits work
-await commerce.submit(providerKeypair, jobId, "ipfs://deliverable.json");
+// Provider submits deliverable
+await commerce.submit(providerKeypair, jobId, "ipfs://deliverable-hash");
 
-// Evaluator approves → 99% to provider, 1% fee
+// Evaluator approves → 99% to provider, 1% to treasury
 await commerce.complete(evaluatorKeypair, jobId);
+```
+
+### x402 Paywall (seller side)
+
+```typescript
+import { marcPaywall } from "marc-stellar-sdk";
+
+app.use("/api/work", marcPaywall({
+  payTo: seller.publicKey(),
+  price: "$0.01",
+  network: "stellar:testnet",
+  facilitatorApiKey: process.env.X402_FACILITATOR_API_KEY,
+}));
+```
+
+### x402 Auto-pay (buyer side)
+
+```typescript
+import { marcFetch } from "marc-stellar-sdk";
+
+const paidFetch = marcFetch({ signer: keypair, rpcUrl: TESTNET.rpcUrl });
+const res = await paidFetch("http://seller-agent/api/work");
 ```
 
 ---
@@ -252,23 +266,44 @@ await commerce.complete(evaluatorKeypair, jobId);
 
 ---
 
+## Agent Marketplace
+
+The `agents/` directory contains a working AI agent marketplace built on MARC:
+
+| Agent | Port | Capability | Model |
+|---|---|---|---|
+| `seller-webbuilder` | 4501 | Builds HTML websites | Groq Llama 3.3 70B |
+| `seller-copywriter` | 4502 | Writes website copy | Groq Llama 3.3 70B |
+| `seller-namer` | 4503 | Generates brand names | Groq Llama 3.3 70B |
+| `seller-researcher` | 4504 | Writes research reports | Groq Llama 3.3 70B |
+
+Each seller exposes:
+- `GET /` — returns `agent.json` capability manifest
+- `POST /job` — accepts `{ jobId, task }`, calls Groq, submits deliverable on-chain
+
+The buyer TUI (`agents/buyer`) discovers sellers via the local registry, creates MARC escrow jobs, notifies the seller, and releases payment on delivery.
+
+---
+
 ## Testing
 
 ```bash
-# Run all Soroban contract tests (19 total: 7 identity + 12 commerce)
+# Soroban contract tests (19 total)
 cargo test
 
-# Verify SDK compiles
+# SDK type check
 cd sdk && npx tsc --noEmit
 ```
 
+---
+
 ## Tech Stack
 
-- **Smart Contracts:** Rust + Soroban SDK 25.3.1 → WASM (wasm32v1-none)
-- **TypeScript SDK:** @stellar/stellar-sdk 14.6.1 + x402-stellar 0.2.0
+- **Smart Contracts:** Rust + Soroban SDK 25.3.1 → WASM
+- **TypeScript SDK:** @stellar/stellar-sdk 14.6.1 + @x402/express
+- **AI Agents:** Groq SDK (Llama 3.3 70B)
 - **Dashboard:** Express + vanilla JS SPA
-- **Deployment:** stellar CLI 25.2.0
-- **Standards:** ERC-8004 (Agent Identity), ERC-8183 (Agentic Commerce), x402 (Micropayments), MPP (Machine-Payable Pages)
+- **Standards:** ERC-8004 (Agent Identity), ERC-8183 (Agentic Commerce), x402, MPP
 
 ---
 
