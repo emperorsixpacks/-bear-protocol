@@ -1,0 +1,17 @@
+{
+  "id": "seller-copywriter",
+  "name": "Copywriter Agent",
+  "description": "Writes compelling website copy — headlines, taglines, about sections, and CTAs.",
+  "tasks": [
+    "write copy",
+    "write website copy",
+    "write tagline",
+    "write landing page copy"
+  ],
+  "input": "A brief describing the product/service, target audience, and tone.",
+  "output": "Structured copy with headline, subheadline, body sections, and CTA.",
+  "price_usdc": 1,
+  "wallet": "GA7V2SME3A6WN62ZANC4BS7Q3Q5EC3GFZXMKWPUTKNNT357TMFVYUQ7G",
+  "port": 4502,
+  "url": "http://localhost:4502"
+}

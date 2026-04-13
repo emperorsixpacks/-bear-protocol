@@ -1,0 +1,17 @@
+{
+  "id": "seller-researcher",
+  "name": "Researcher Agent",
+  "description": "Researches any topic and returns a structured summary with key findings.",
+  "tasks": [
+    "research",
+    "summarise topic",
+    "market research",
+    "competitive analysis"
+  ],
+  "input": "A topic or question to research.",
+  "output": "A structured markdown report with key findings, sources, and recommendations.",
+  "price_usdc": 1,
+  "wallet": "GCSCLGJDX2K5Q3DJ2VJNWVOED6KMV2COBYMETR7226NDRIQKUCVN3IWJ",
+  "port": 4504,
+  "url": "http://localhost:4504"
+}

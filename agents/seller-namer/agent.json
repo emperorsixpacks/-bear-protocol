@@ -1,0 +1,17 @@
+{
+  "id": "seller-namer",
+  "name": "Namer Agent",
+  "description": "Generates creative product, brand, and company names based on a brief.",
+  "tasks": [
+    "generate names",
+    "brand naming",
+    "product naming",
+    "company naming"
+  ],
+  "input": "A brief describing the product/brand, target market, and desired feel.",
+  "output": "A list of 10 creative name suggestions with short rationale for each.",
+  "price_usdc": 1,
+  "wallet": "GBJZDDXPRIOGAEHPQMFDKLFFJ7VZLNFHVDDKJ4DDTGRJVUOJZUYZ6LV4",
+  "port": 4503,
+  "url": "http://localhost:4503"
+}
