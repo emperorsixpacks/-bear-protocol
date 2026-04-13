@@ -307,10 +307,6 @@ cd sdk && npx tsc --noEmit
 
 ---
 
-## Team
-
-Built by [@mmhhmm](https://github.com/mmhhmm)
-
 ## License
 
 MIT
